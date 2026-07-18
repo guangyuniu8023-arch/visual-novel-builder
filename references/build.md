@@ -98,10 +98,43 @@ assets/themes/apply_theme.sh <主题> <id>/build   # 应用皮肤（build 或 bu
    - 文件头部注释写推导句（意象→语义→参数依据），写不出=没推导，回炉
 5. **验收**：两帧截图对比（间隔 ≥2s）粒子位置必须可辨变化；`index.html` 与 `userStyleSheet.css` 均无 `__FX_CSS__` 残留。
 
+**HUD 设计推导（对话框/名牌/选择支——禁止"选预设换色"交差）**：
+
+对话框是玩家全程盯着看的界面，**它不是从 5 套预设里挑一个换主色，而是从 GDD 主题配方推导出来的设计**。预设主题的 textbox.scss 只是结构骨架（缺类不渲染），视觉参数必须按本节逐参数推导并改写，推导依据落进 GDD 主题配方节的「HUD 设计」小节：
+
+| 参数 | 推导依据（从意象出发） | 反例（换色思维） |
+|---|---|---|
+| 面板材质 | 核心场景的"触感"：木工房=温润实木（低透明实色+柔光）、深夜都市=湿冷玻璃（backdrop-blur+高反光）、纸质档案=哑光纸感（实色+细颗粒） | 所有题材都是"半透明圆角矩形" |
+| 形状语言 | 题材气质的几何直译：治愈=大圆角软边、悬疑=锐利小圆角+单边强调线、科幻=切角/细线框 | 全部 44px 圆角 |
+| 装饰图形 | **故事世界里真实存在的物件**（木工房刨花、侦探社铆钉）——没有依据的装饰一律 `background-image: none`，禁止挂与题材无关的图案 | 深夜都市挂爪印 SVG（从 anime 预设抄来的残留） |
+| 名牌形态 | 与面板同一推导链：实体世界题材=铭牌/标签（矩形+描边）、幻想/治愈=胶囊/气泡；名牌色=主色，字色与面板的对比关系 | 所有题材都是"胶囊浮在框上沿" |
+| 正文排版 | 字重/字距随节奏：慢节奏题材字距略松（0.08em+）、字重偏轻；紧张题材字距紧、字重偏沉 | 全局 600 字重 0.06em |
+| 旁白弱化 | **必备规则**：无名牌旁白正文视觉弱化（见下），弱化色=正文色 80-85% 不透明度，不分题材 | 旁白与对话毫无区分 |
+
+**旁白弱化（结构契约，5 套骨架与所有新主题必备）**：引擎只对 `角色名:内容;` 渲染 showName 元素，无名牌旁白行没有该元素。规则放在 **userStyleSheet.css**（全局 CSS），**绝不能写进模板 scss**——见下方「模板 scss 选择器铁律」：
+
+```css
+/* userStyleSheet.css 内（5 套主题已内置） */
+#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="outer"],
+#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="inner"] {
+  opacity: 0.82;
+}
+```
+
+模板组件的 DOM 保留**哈希后缀类名**（如 `_TextBox_showName_p1zxt_104`），全局 CSS 用可读前缀 substring 匹配（`[class*="TextBox_showName"]`，与 `[class*="_singleButton_"]` 同一先例）；`#textBoxMain` 是引擎固定 id。只调不透明度、**不动 padding/字号**（旁白与对话交替出现，布局差会造成文本框跳动）。GDD「叙事视角与名牌约定」为「刻意匿名主角」的项目，全剧本都是旁白，此规则视觉上等同全文弱化——仍要保留（一致性与未来剧本改动安全）。
+
+**模板 scss 选择器铁律（血泪教训）**：引擎对 textbox/choose/title 三个模板 scss **不做真 Sass 编译**，是正则平铺解析（`\.([^{\s]+)\s*{…}` 抓类名→内联样式表）。因此：
+
+- 只写**单层 `.类名 {…}`** 平铺规则和 `@` 规则；块内嵌套（如 `.Title_button { &:not(:first-child){…} }`）是引擎兼容写法，可以用
+- **禁止独立的复合/伪类/后代选择器规则**（如 `.A:not(:has(.B)) .C {…}`、`.A .B {…}`、`.A:hover {…}`）：解析器会把 `.A… .C {…}` 误读成 `.C {…}`，**静默覆盖同名真规则**——旁白弱化规则写进 textbox.scss 时就把 `.outer` 的颜色/定位整个抹掉，正文全部消失
+- 需要结构选择能力（`:has`/后代/伪类）的需求，一律去 userStyleSheet.css 用哈希前缀 substring 匹配实现
+
+**选择支**同属 HUD：形态（卡片/按钮/列表）与材质随面板推导链走，结构类契约不变（见下）。
+
 2. **apply_theme.sh 流程**：拷 template.json + textbox/choose/title 三个 SCSS + userStyleSheet.css → **校验 `game/background/title_particles.png` 存在**（tile 是项目主题素材，agent 推导后用 gen_particles.py 自由参数绘制 / gen_image.py 生成 / 自行创作，缺失即报错）→ **注入 effects.css**（项目根优先，主题目录骨架兜底，写入落地页 index.html 与 userStyleSheet.css 的 `/*__FX_CSS__*/` 占位符）→ 注入 sheen/kenburns/fallback/点击闪色推导参数（`__SHEEN_*`/`__KB_*` 等，任一残留即报错退出）
 3. **粒子 tile**：`scripts/gen_particles.py --type petals|rain|motes|snow|fog --color <hex> --count <n>` 是快速出基础 tile 的**工具**（形状库，非动效菜单），也鼓励按主题自由创作或 AI 出图——tile 承担"形状与质感"，effects.css 承担"运动行为"，两者都由项目主题决定
 4. **新主题骨架铁律**：**必须以 anime 主题的完整 SCSS 为骨架、只改视觉参数，禁止从零写**——缺结构类会导致整个组件不渲染。而且**选择器写法也要逐字对齐**（嵌套/独立写法在引擎模板编译下行为不同：`:not(:first-child)` 必须写成 `.Title_button` 块内的 `&:not(:first-child)`，独立复合选择器会静默失效，菜单按钮全漏出来）。必备结构类与行为属性清单：
-   - `textbox.scss`：`.TextBox_main` / `.TextBox_main_miniavatarOff` / `.TextBox_Background` / `.TextBox_showName` / `.TextBox_ShowName_Background` / `.outer` / `.inner` / `.outerName` / `.innerName` / `.miniAvatarContainer{display:none}` / `.miniAvatarImg{display:none}` / `.TextBox_textElement_start`（打字机显影动画，缺了正文永不显示）/ `.TextBox_textElement_Settled` / `@keyframes TextDelayShow` / `@keyframes showSoftly`
+   - `textbox.scss`：`.TextBox_main` / `.TextBox_main_miniavatarOff` / `.TextBox_Background` / `.TextBox_showName` / `.TextBox_ShowName_Background` / `.outer` / `.inner` / `.outerName` / `.innerName` / `.miniAvatarContainer{display:none}` / `.miniAvatarImg{display:none}` / `.TextBox_textElement_start`（打字机显影动画，缺了正文永不显示）/ `.TextBox_textElement_Settled` / `@keyframes TextDelayShow` / `@keyframes showSoftly`（旁白弱化规则不在此文件——它必须用 `:has()`，放 userStyleSheet.css，见「HUD 设计推导」节）
    - `choose.scss`：`.Choose_Main`（z-index:13）/ `.Choose_item_outer` / `.Choose_item`（**必须带 font-family、font-size:220% 以上、`cursor: pointer`**——缺字号=文字小到不可见，缺 cursor=E2E 检测失效+用户无手型）/ `.Choose_item_disabled`（`cursor: not-allowed`）
    - `title.scss`：`.Title_main` / `.Title_buttonList`（结构照抄 anime：absolute 定位+padding 620px）/ `.Title_button`（`&:not(:first-child){display:none}` 嵌套在块内！+ `cursor: pointer`）/ `.Title_button:hover` / `.Title_button_text` / `.Title_button_text_outer{display:none}` / `.Title_button_text_inner{display:none}` / `.Title_backup_background` / `.Title_button_disabled`
 5. 封面：标题与底图统一由生图模型直出（文字描边色取 `cover.stroke` 色系），底图氛围按 `cover.prompt_mood` 写 prompt（见 art-director.md 第 6 节），禁止所有题材千篇一律同一色调
@@ -148,6 +181,7 @@ Enable_Appreciation:false;
 |---|---|
 | `[class*="_singleButton_"] { display:none }` | 隐藏底部控制条——视觉小说不需要引擎功能按钮，分支回溯由剧本承担（见 scriptwriter.md） |
 | React 封面层三层动画 | 见上文「标题页四件套」第 3 条（落地页层在引擎 index.html 内联，不在本文件） |
+| 旁白弱化 `#textBoxMain:not(:has([class*="TextBox_showName"])) …` | 无名牌旁白正文弱化，与角色对话区分（见「HUD 设计推导」节） |
 | `div:has(+ #textBoxMain) { opacity:1 }` | 对话框底板不透明度锁定，压过引擎用户档位 |
 | `body { background-color }` | 舞台外压深色 |
 
@@ -156,7 +190,7 @@ Enable_Appreciation:false;
 - **返回标题页封面瞬态**：结局 `end;` 回到标题页时 React 封面层 remount，封面图解码期间会短暂露出 `.Title_backup_background`（约 0.5-1.5s）。缓解已内置：封面统一瘦身到 1440 宽 progressive JPEG（`bake_title.py --shrink-only`，见 art-director.md 第 6 节），且主题 `title.scss` 的备份背景渐变必须与封面暗部色调一致（midnight=#2A2E3C 深夜蓝、anime=#FFF0F3 浅粉——新主题照此配套）。QA 时截图要在返回标题后**停留 2s 再判**，瞬态残留不算缺陷
 - **404 噪音白名单**：`/api/webgalsync` WebSocket（引擎联机同步功能，单机版必现）属无害噪音。SourceHanSerif 字体与 Live2D SDK 的 404 已在引擎层移除/改为按需加载，若再出现说明引擎 dist 被替换过
 
-注意：模板 SCSS 运行时被编译为 emotion 哈希类名，**全局 CSS 选不中模板组件**。要改模板渲染的元素（标题按钮、对话框、选择支），改 `game/template/*.scss`；全局层（舞台外、启动层、控制条）才用 userStyleSheet.css。
+注意：模板 SCSS 不是真编译，是引擎正则平铺解析（复合选择器会被误读，铁律见「HUD 设计推导」节），解析结果按类名查表打成内联样式——所以改模板元素外观（标题按钮、对话框、选择支的面板/字号/颜色）改 `game/template/*.scss`；而**结构性选中**（`:has()`、后代、伪类）只能在 userStyleSheet.css 里用哈希前缀 substring 匹配（模板组件 DOM 保留 `_组件名_哈希` 类名，前缀稳定可读）。全局层（舞台外、启动层、控制条）也用 userStyleSheet.css。
 
 ## 检查点（QA 前自检）
 
@@ -165,7 +199,8 @@ Enable_Appreciation:false;
 - [ ] 标题页是一张"完整设计素材"：封面构图留白得当、游戏名像游戏名（2-6 字钩子）、英文副标+tagline 排版在位
 - [ ] 「开始游戏」单按钮位于画面中轴（约 62% 处），不压角色主体
 - [ ] 动态封面三层动画可感知：背景推拉、光晕扫过（如启用）、粒子按项目 effects.css 动效运动（落地页与 React 层接力，全程动画不中断）
-- [ ] 粒子意象/动效/配色、HUD 材质、封面氛围与 GDD 主题配方一致（悬疑≠花瓣暖粉），effects.css 头部有推导句
+- [ ] 粒子意象/动效/配色、HUD 材质、封面氛围与 GDD 主题配方一致（悬疑≠花瓣暖粉），effects.css 头部有推导句；**对话框无与题材无关的装饰图形**（装饰=无推导残留，回炉）
+- [ ] 名牌约定落地：角色（含主角）说出口的话带名牌、名字与 GDD 主角名牌名一致；无名牌旁白正文**肉眼可辨地弱于**对话（userStyleSheet.css 旁白弱化规则生效），且旁白/对话交替时文本框无跳动
 - [ ] 游戏内底部无控制条按钮
 - [ ] 场景切换有淡入转场，且**立绘先退场再换景**；立绘换装不生硬（剧本参数，见 scriptwriter.md 演出与转场）
 - [ ] 情绪节拍处立绘差分有对应反应（训斥→得意、被抓包→惊讶等），非一张 normal 挂到底

@@ -48,3 +48,12 @@ div:has(+ #textBoxMain) {
 body {
   background-color: #14100B;
 }
+
+/* 无名牌旁白：正文弱化，与角色对话区分。
+   引擎只对带说话人的行渲染 showName 元素；模板组件类名带哈希后缀，
+   全局 CSS 用可读前缀 substring 匹配（同 _singleButton_ 先例）。
+   只调不透明度，不动布局，防旁白/对话交替时文本框跳动。 */
+#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="outer"],
+#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="inner"] {
+  opacity: 0.82;
+}

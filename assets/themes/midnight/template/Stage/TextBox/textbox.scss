@@ -1,7 +1,7 @@
 /* ============================================
-   二次元 anime-fresh · 竖屏对话框
+   midnight 深夜都市 · 竖屏对话框
    设计坐标系 1440×2560
-   基调：白 0.92 面板 + 樱粉粗边 / 圆角 40 / 圆体
+   基调：深夜玻璃面板 + 琥珀描边 / 圆角 28 / 无装饰图形
    ============================================ */
 
 .TextBox_main {
@@ -12,7 +12,7 @@
   bottom: 40px;
   min-height: 400px;
   max-height: 400px;
-  border-radius: 44px;
+  border-radius: 28px;
   color: #E8E4DC;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -31,17 +31,17 @@
 .TextBox_Background {
   z-index: 2;
   background-color: rgba(16, 19, 30, 0.82);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%23E8A33D'%3E%3Ccircle cx='70' cy='34' r='16'/%3E%3Ccircle cx='103' cy='58' r='16'/%3E%3Ccircle cx='89' cy='99' r='16'/%3E%3Ccircle cx='51' cy='99' r='16'/%3E%3Ccircle cx='37' cy='58' r='16'/%3E%3C/g%3E%3Ccircle cx='70' cy='70' r='13' fill='%23FFD97D'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 40px top 30px;
-  background-size: 110px;
-  border: 6px solid #E8A33D;
-  box-shadow: 0 14px 44px rgba(255, 143, 171, 0.35), 0 6px 24px rgba(60, 40, 60, 0.22);
+  background-image: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(232, 163, 61, 0.55);
+  border-top: 4px solid #E8A33D;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55), 0 0 24px rgba(232, 163, 61, 0.12);
   mask-image: none;
   -webkit-mask-image: none;
 }
 
-/* 说话人名牌：樱粉胶囊 + 白边 */
+/* 说话人名牌：琥珀胶囊 + 白边 */
 .TextBox_showName {
   font-size: 84%;
   font-weight: 700;
@@ -62,7 +62,7 @@
   z-index: 2;
   background: linear-gradient(135deg, #B97A1F 0%, #E8A33D 100%);
   border: 5px solid rgba(255, 255, 255, 0.95);
-  box-shadow: 0 8px 22px rgba(255, 143, 171, 0.55);
+  box-shadow: 0 8px 22px rgba(232, 163, 61, 0.45);
 }
 
 /* 正文文字 */
