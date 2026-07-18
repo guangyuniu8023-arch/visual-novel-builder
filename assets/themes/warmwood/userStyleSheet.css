@@ -57,3 +57,23 @@ body {
 #textBoxMain:not(:has([class*="TextBox_showName"])) [class*="inner"] {
   opacity: 0.82;
 }
+
+/* 无名牌旁白：补「旁白」幽灵标签（名牌槽位，细边透明底弱化于角色名牌） */
+#textBoxMain:not(:has([class*="TextBox_showName"]))::before {
+  content: "旁白";
+  position: absolute;
+  left: 76px;
+  top: -38px;
+  height: 76px;
+  line-height: 72px;
+  padding: 0 40px;
+  font-size: 42px;
+  letter-spacing: 0.12em;
+  color: #C8925A;
+  border: 2px solid #C8925A;
+  border-radius: 38px;
+  background: transparent;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 3;
+}
