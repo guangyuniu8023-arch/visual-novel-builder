@@ -49,31 +49,30 @@ body {
   background-color: #14100B;
 }
 
-/* 无名牌旁白：正文弱化，与角色对话区分。
-   引擎只对带说话人的行渲染 showName 元素；模板组件类名带哈希后缀，
-   全局 CSS 用可读前缀 substring 匹配（同 _singleButton_ 先例）。
-   只调不透明度，不动布局，防旁白/对话交替时文本框跳动。 */
-#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="outer"],
-#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="inner"] {
+/* 无名牌旁白：正文弱化 +「旁白」标签。
+   判定用 DOM 结构而非类名：旁白行 #textBoxMain 恰好 2 个直接子节点
+   （miniAvatar+文本容器），对话行 4 个（多 2 个名牌 div）——名牌与文字
+   span 都是 emotion 随机类名，[class*=] 匹配不可靠（v8.1 教训）。
+   弱化作用在文本容器上（子元素打字机 opacity 动画不受影响，容器
+   不透明度与子元素相乘）；标签实底与面板同色，骑缝坐在框边上缘，
+   与角色实心名牌同槽位、略小一号，层级一眼可辨。 */
+#textBoxMain:not(:has(> :nth-child(3))) > :nth-child(2) {
   opacity: 0.82;
 }
-
-/* 无名牌旁白：补「旁白」幽灵标签（名牌槽位，细边透明底弱化于角色名牌） */
-#textBoxMain:not(:has([class*="TextBox_showName"]))::before {
+#textBoxMain:not(:has(> :nth-child(3)))::before {
   content: "旁白";
   position: absolute;
   left: 76px;
-  top: -38px;
-  height: 76px;
-  line-height: 72px;
-  padding: 0 40px;
-  font-size: 42px;
+  top: -34px;
+  height: 68px;
+  line-height: 64px;
+  padding: 0 36px;
+  font-size: 40px;
   letter-spacing: 0.12em;
   color: #C8925A;
   border: 2px solid #C8925A;
-  border-radius: 38px;
-  background: transparent;
-  opacity: 0.55;
+  border-radius: 34px;
+  background: #20180F;
   pointer-events: none;
   z-index: 3;
 }

@@ -111,28 +111,27 @@ assets/themes/apply_theme.sh <主题> <id>/build   # 应用皮肤（build 或 bu
 | 正文排版 | 字重/字距随节奏：慢节奏题材字距略松（0.08em+）、字重偏轻；紧张题材字距紧、字重偏沉 | 全局 600 字重 0.06em |
 | 旁白弱化 | **必备规则**：无名牌旁白正文视觉弱化（见下），弱化色=正文色 80-85% 不透明度，不分题材 | 旁白与对话毫无区分 |
 
-**旁白弱化与「旁白」标签（结构契约，5 套骨架与所有新主题必备）**：引擎只对 `角色名:内容;` 渲染 showName 元素，无名牌旁白行没有该元素。两条规则都放在 **userStyleSheet.css**（全局 CSS），**绝不能写进模板 scss**——见下方「模板 scss 选择器铁律」：
+**旁白弱化与「旁白」标签（结构契约，5 套骨架与所有新主题必备）**：两条规则都放在 **userStyleSheet.css**（全局 CSS），**绝不能写进模板 scss**——见下方「模板 scss 选择器铁律」：
 
 ```css
 /* userStyleSheet.css 内（5 套主题已内置） */
-/* 1. 正文弱化：旁白可辨地弱于角色对话 */
-#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="outer"],
-#textBoxMain:not(:has([class*="TextBox_showName"])) [class*="inner"] {
+/* 1. 正文弱化：作用在文本容器上（子元素打字机 opacity 动画不受影响，容器不透明度与子元素相乘） */
+#textBoxMain:not(:has(> :nth-child(3))) > :nth-child(2) {
   opacity: 0.82;
 }
-/* 2. 「旁白」幽灵标签：名牌槽位补标识，细边透明底+低不透明，明显弱于角色名牌 */
-#textBoxMain:not(:has([class*="TextBox_showName"]))::before {
+/* 2. 「旁白」标签：实底与面板同色，骑缝坐在框边上缘，与角色实心名牌同槽位、略小一号 */
+#textBoxMain:not(:has(> :nth-child(3)))::before {
   content: "旁白";
-  position: absolute; left: 76px; top: -38px;   /* 与名牌槽位一致（simple 主题 72/-34） */
-  height: 76px; line-height: 72px; padding: 0 40px;
-  font-size: 42px; letter-spacing: 0.12em;
-  color: <主题主色>; border: 2px solid <主题主色>; border-radius: 38px;
-  background: transparent; opacity: 0.55;
+  position: absolute; left: 76px; top: -34px;   /* 与名牌槽位一致（simple 主题 72/-32） */
+  height: 68px; line-height: 64px; padding: 0 36px;
+  font-size: 40px; letter-spacing: 0.12em;
+  color: <主题主色>; border: 2px solid <主题主色>; border-radius: 34px;
+  background: <面板同色实底>;                    /* 必须实底！透明底会让框边线穿过标签 */
   pointer-events: none; z-index: 3;
 }
 ```
 
-旁白行的名牌槽位**不许空着**——玩家需要明确感知"这一行是叙述，不是谁在说"。幽灵标签与角色名牌的关系：同槽位、同尺寸量级，但实心胶囊 vs 细边透明、100% vs 55% 不透明，一眼分出"人在说 / 叙述在说"。模板组件的 DOM 保留**哈希后缀类名**（如 `_TextBox_showName_p1zxt_104`），全局 CSS 用可读前缀 substring 匹配（`[class*="TextBox_showName"]`，与 `[class*="_singleButton_"]` 同一先例）；`#textBoxMain` 是引擎固定 id。只调不透明度与标签、**不动 padding/字号**（旁白与对话交替出现，布局差会造成文本框跳动）。GDD「叙事视角与名牌约定」为「刻意匿名主角」的项目，全剧本都是旁白，此规则视觉上等同全文弱化——仍要保留（一致性与未来剧本改动安全）。
+**旁白判定用 DOM 结构，禁止用类名**：旁白行 `#textBoxMain` 恰好 2 个直接子节点（miniAvatar + 文本容器），对话行 4 个（多 2 个名牌 div），`:not(:has(> :nth-child(3)))` 精确区分。**名牌 div 和文字 span 都是 emotion 随机类名**（`css-n0ia3h` 这类），`[class*="TextBox_showName"]` / `[class*="outer"]` 匹配不到任何东西——v8.1 曾因此标签与名牌重叠、弱化静默失效（教训：写完全局 CSS 必须 E2E 截图验证两种行各一张，不能只看一种）。`#textBoxMain` 是引擎固定 id，唯一稳定锚点。标签**不许透明底**（框边线会穿过去）也不许与角色名牌同质感（实心 vs 实心分不清层级）——实底取面板同色、尺寸略小、细边，层级一眼可辨。只调不透明度与标签、**不动 padding/字号**（旁白与对话交替出现，布局差会造成文本框跳动）。GDD「叙事视角与名牌约定」为「刻意匿名主角」的项目，全剧本都是旁白，此规则视觉上等同全文弱化——仍要保留（一致性与未来剧本改动安全）。
 
 **模板 scss 选择器铁律（血泪教训）**：引擎对 textbox/choose/title 三个模板 scss **不做真 Sass 编译**，是正则平铺解析（`\.([^{\s]+)\s*{…}` 抓类名→内联样式表）。因此：
 
@@ -141,6 +140,8 @@ assets/themes/apply_theme.sh <主题> <id>/build   # 应用皮肤（build 或 bu
 - 需要结构选择能力（`:has`/后代/伪类）的需求，一律去 userStyleSheet.css 用哈希前缀 substring 匹配实现
 
 **选择支**同属 HUD：形态（卡片/按钮/列表）与材质随面板推导链走，结构类契约不变（见下）。
+
+**项目级 HUD 改写（装配后必做）**：`apply_theme` 只铺骨架主题的默认参数，**装配完成后必须按 GDD「HUD 设计」节改写项目级参数**——直接改 `build/game/template/Stage/TextBox/textbox.scss`、`Stage/Choose/choose.scss`、`UI/Title/title.scss` 与 `build/game/userStyleSheet.css` 里的视觉值（面板色/描边/名牌渐变/旁白标签色/body 底色），让 HUD 跟着本项目的角色图与主题配方走，而不是全员骨架默认色。同 IP 双版本也要对仗拉开（第三小时：自由版琥珀霓虹 vs 孤独版冷青钢色——后者即装配后项目级改写：面板 `rgba(13,20,29,.85)` + 冷青 `#7FB3C8` 顶边与名牌渐变 `#3D5A6B→#5A8299` + 标签/底色同步）。注意 `assemble_build.sh` 会 `rm -rf build` 重建——**重新装配后项目级改写必须重放**（改写清单建议随 GDD「HUD 设计」节落档成参数表，重放照抄）。
 
 2. **apply_theme.sh 流程**：拷 template.json + textbox/choose/title 三个 SCSS + userStyleSheet.css → **校验 `game/background/title_particles.png` 存在**（tile 是项目主题素材，agent 推导后用 gen_particles.py 自由参数绘制 / gen_image.py 生成 / 自行创作，缺失即报错）→ **注入 effects.css**（项目根优先，主题目录骨架兜底，写入落地页 index.html 与 userStyleSheet.css 的 `/*__FX_CSS__*/` 占位符）→ 注入 sheen/kenburns/fallback/点击闪色推导参数（`__SHEEN_*`/`__KB_*` 等，任一残留即报错退出）
 3. **粒子 tile**：`scripts/gen_particles.py --type petals|rain|motes|snow|fog --color <hex> --count <n>` 是快速出基础 tile 的**工具**（形状库，非动效菜单），也鼓励按主题自由创作或 AI 出图——tile 承担"形状与质感"，effects.css 承担"运动行为"，两者都由项目主题决定
@@ -192,7 +193,7 @@ Enable_Appreciation:false;
 |---|---|
 | `[class*="_singleButton_"] { display:none }` | 隐藏底部控制条——视觉小说不需要引擎功能按钮，分支回溯由剧本承担（见 scriptwriter.md） |
 | React 封面层三层动画 | 见上文「标题页四件套」第 3 条（落地页层在引擎 index.html 内联，不在本文件） |
-| 旁白弱化 + 「旁白」幽灵标签（`#textBoxMain:not(:has([class*="TextBox_showName"]))` 两条） | 无名牌旁白：正文弱化 + 名牌槽位补「旁白」标识（见「HUD 设计推导」节） |
+| 旁白弱化 + 「旁白」标签（`#textBoxMain:not(:has(> :nth-child(3)))` 两条） | 无名牌旁白：正文弱化 + 名牌槽位补实底「旁白」标识（见「HUD 设计推导」节） |
 | `div:has(+ #textBoxMain) { opacity:1 }` | 对话框底板不透明度锁定，压过引擎用户档位 |
 | `body { background-color }` | 舞台外压深色 |
 
@@ -211,7 +212,7 @@ Enable_Appreciation:false;
 - [ ] 「开始游戏」单按钮位于画面中轴（约 62% 处），不压角色主体
 - [ ] 动态封面三层动画可感知：背景推拉、光晕扫过（如启用）、粒子按项目 effects.css 动效运动（落地页与 React 层接力，全程动画不中断）
 - [ ] 粒子意象/动效/配色、HUD 材质、封面氛围与 GDD 主题配方一致（悬疑≠花瓣暖粉），effects.css 头部有推导句；**对话框无与题材无关的装饰图形**（装饰=无推导残留，回炉）
-- [ ] 名牌约定落地：角色（含主角）说出口的话带名牌、名字与 GDD 主角名牌名一致；无名牌旁白带**「旁白」幽灵标签**（细边透明底，明显弱于角色名牌）且正文可辨弱化，旁白/对话交替时文本框无跳动
+- [ ] 名牌约定落地：角色（含主角）说出口的话带名牌、名字与 GDD 主角名牌名一致；无名牌旁白带**实底「旁白」标签**（与面板同色、略小于角色名牌，框边线不穿过标签）且正文可辨弱化，旁白/对话交替时文本框无跳动；**对话行不得出现「旁白」标签与角色名牌重叠**（若出现=选择器误用类名匹配，回炉按 HUD 节的 DOM 结构判重写）
 - [ ] 游戏内底部无控制条按钮
 - [ ] 场景切换有淡入转场，且**立绘先退场再换景**；立绘换装不生硬（剧本参数，见 scriptwriter.md 演出与转场）
 - [ ] 情绪节拍处立绘差分有对应反应（训斥→得意、被抓包→惊讶等），非一张 normal 挂到底
