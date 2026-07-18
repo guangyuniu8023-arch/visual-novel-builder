@@ -1,0 +1,80 @@
+/* noir 悬疑/黑暗 · 竖屏标题页 */
+
+.Title_main {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 13;
+}
+
+.Title_buttonList {
+  display: flex;
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  flex-flow: column;
+  padding: 620px 0 0 0;
+  box-sizing: border-box;
+}
+
+.Title_button {
+  &:not(:first-child) {
+    display: none;
+  }
+  font-weight: 700;
+  text-align: center;
+  min-width: 560px;
+  cursor: pointer;
+  padding: 26px 76px;
+  margin: 16px 0;
+  border-radius: 6px;
+  background: rgba(10, 14, 22, 0.72);
+  backdrop-filter: blur(6px);
+  border: 2px solid #8FD8C6;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 18px rgba(143, 216, 198, 0.15);
+  transform: none;
+  transition: all 0.3s;
+}
+
+.Title_button:hover {
+  background: #8FD8C6;
+  box-shadow: 0 0 32px rgba(143, 216, 198, 0.5);
+  transform: scale(1.03);
+}
+
+.Title_button:hover .Title_button_text {
+  color: #0A0E16;
+}
+
+.Title_button_text {
+  font-size: 180%;
+  color: #8FD8C6;
+  padding: 0 0.5em;
+  letter-spacing: 0.28em;
+  transition: color 0.3s;
+}
+
+.Title_button_text_outer {
+  display: none;
+}
+
+.Title_button_text_inner {
+  display: none;
+}
+
+.Title_backup_background {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 13;
+  background: linear-gradient(160deg, #0B101C 0%, #1A2438 100%);
+}
+
+.Title_button_disabled {
+  cursor: not-allowed !important;
+  opacity: 0.5;
+}

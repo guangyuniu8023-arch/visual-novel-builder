@@ -1,0 +1,28 @@
+{
+  "name": "noir",
+  "mood": "悬疑/黑暗/推理",
+  "primary": "#8FD8C6",
+  "text": "#DCE3EE",
+  "particle": {
+    "type": "rain",
+    "color": "#A8C8E8",
+    "count": 90,
+    "duration": "3.2s"
+  },
+  "cover": {
+    "stroke": "#8FD8C6",
+    "prompt_mood": "rainy night, cold color grading, moody cinematic lighting, film noir atmosphere"
+  },
+  "hud": "玻璃拟态深色对话框 + 荧光青名签 + 档案卡片选择支 + 锐利描边按钮",
+  "effects": {
+    "sheen": {
+      "enabled": false
+    },
+    "kenburns": {
+      "duration": "18s",
+      "zoomFrom": "104%",
+      "zoomTo": "111%"
+    },
+    "fallback": "linear-gradient(180deg, #05070C 0%, #101822 100%)"
+  }
+}

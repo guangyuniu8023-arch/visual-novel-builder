@@ -1,0 +1,12 @@
+/* warmwood 皮肤默认动效（骨架兜底：项目根 effects.css 存在时会被覆盖）
+   推导：木质暖调/室内 → 暖光里的浮尘木屑 = 随热气流缓上浮 + 明暗呼吸
+   无缝：纵向 -2560px 整数倍（向上），横向 0→40→0 回零 */
+@keyframes warmwoodMotesRise {
+  0%   { background-position: 0 0;         opacity: 0.55; }
+  50%  { background-position: 40px -1280px; opacity: 1; }
+  100% { background-position: 0 -2560px;    opacity: 0.55; }
+}
+.html-body__title-enter::before,
+.css-kb8n67::before {
+  animation: warmwoodMotesRise 10s linear infinite;
+}

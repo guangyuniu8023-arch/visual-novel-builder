@@ -1,0 +1,13 @@
+label:judge;
+jumpLabel:ending_he -when=affection>=15;
+jumpLabel:ending_ne -when=affection>=5;
+jumpLabel:ending_be;
+label:ending_he;
+陆离:（他牵起了你的手）以后每个春天，都一起过吧。;
+end;
+label:ending_ne;
+陆离:那就……下次见。;
+end;
+label:ending_be;
+陆离:我们，还是算了吧。;
+end;

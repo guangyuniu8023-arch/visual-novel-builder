@@ -1,0 +1,11 @@
+/* simple 皮肤默认动效（骨架兜底：项目根 effects.css 存在时会被覆盖）
+   推导：简约/留白 → 动效克制到近乎静止 = 极缓直落、无横向摆动、无呼吸
+   无缝：纵向 2560px 整数倍 */
+@keyframes simpleSlowFall {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 2560px; }
+}
+.html-body__title-enter::before,
+.css-kb8n67::before {
+  animation: simpleSlowFall 16s linear infinite;
+}

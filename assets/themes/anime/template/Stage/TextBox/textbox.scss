@@ -1,0 +1,133 @@
+/* ============================================
+   二次元 anime-fresh · 竖屏对话框
+   设计坐标系 1440×2560
+   基调：白 0.92 面板 + 樱粉粗边 / 圆角 40 / 圆体
+   ============================================ */
+
+.TextBox_main {
+  z-index: 3;
+  position: absolute;
+  left: 36px;
+  right: 36px;
+  bottom: 40px;
+  min-height: 400px;
+  max-height: 400px;
+  border-radius: 44px;
+  color: #4A3F55;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 110px 76px 56px 76px;
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: column;
+  align-items: flex-start;
+  transition: left 0.33s;
+}
+
+.TextBox_main_miniavatarOff {
+  left: 36px;
+}
+
+.TextBox_Background {
+  z-index: 2;
+  background-color: rgba(255, 255, 255, 0.92);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%23FFB7C5'%3E%3Ccircle cx='70' cy='34' r='16'/%3E%3Ccircle cx='103' cy='58' r='16'/%3E%3Ccircle cx='89' cy='99' r='16'/%3E%3Ccircle cx='51' cy='99' r='16'/%3E%3Ccircle cx='37' cy='58' r='16'/%3E%3C/g%3E%3Ccircle cx='70' cy='70' r='13' fill='%23FFD97D'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 40px top 30px;
+  background-size: 110px;
+  border: 6px solid #FFB7C5;
+  box-shadow: 0 14px 44px rgba(255, 143, 171, 0.35), 0 6px 24px rgba(60, 40, 60, 0.22);
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* 说话人名牌：樱粉胶囊 + 白边 */
+.TextBox_showName {
+  font-size: 84%;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0 52px;
+  position: absolute;
+  left: 76px;
+  top: -38px;
+  height: 80px;
+  line-height: 74px;
+  border-radius: 40px;
+  color: #ffffff;
+  z-index: 3;
+  border: none;
+}
+
+.TextBox_ShowName_Background {
+  z-index: 2;
+  background: linear-gradient(135deg, #FF8FAB 0%, #FFB7C5 100%);
+  border: 5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 22px rgba(255, 143, 171, 0.55);
+}
+
+/* 正文文字 */
+.outer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: #4A3F55;
+  z-index: 2;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.inner {
+  white-space: nowrap;
+  position: absolute;
+  left: 0;
+  top: 0;
+  -webkit-text-stroke: 0;
+  z-index: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.outerName {
+  color: #ffffff;
+}
+
+.innerName {
+  -webkit-text-stroke: 0;
+}
+
+.miniAvatarContainer {
+  display: none;
+}
+
+.miniAvatarImg {
+  display: none;
+}
+
+.TextBox_textElement_start {
+  position: relative;
+  animation: TextDelayShow 500ms ease-out forwards;
+  opacity: 0;
+  display: inline-flex;
+  align-content: space-between;
+}
+
+.TextBox_textElement_Settled {
+  position: relative;
+  opacity: 1;
+  display: inline-flex;
+  align-content: space-between;
+}
+
+@keyframes TextDelayShow {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes showSoftly {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}

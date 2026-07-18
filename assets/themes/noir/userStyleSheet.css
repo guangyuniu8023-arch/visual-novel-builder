@@ -1,0 +1,47 @@
+/* noir 悬疑/黑暗 · 全局微调（动态封面版） */
+
+/* 隐藏底部控制条（视觉小说不需要引擎功能按钮，分支回溯由剧本承担） */
+[class*="_singleButton_"] {
+  display: none !important;
+}
+
+/* ===== React 标题封面层：与落地页动态封面同参数衔接 =====
+   noir 配方：慢速推拉 + 雨滴下落（无光晕，保持冷峻）。
+   注意：css-kb8n67 是引擎 dist 的 emotion 类名，若重新构建引擎需同步更新。 */
+.css-kb8n67 {
+  animation: titleKenBurns __KB_DURATION__ ease-in-out infinite alternate;
+}
+@keyframes titleKenBurns {
+  0%   { background-size: auto __KB_ZOOM_FROM__; background-position: 50% 20%; }
+  100% { background-size: auto __KB_ZOOM_TO__; background-position: 50% 46%; }
+}
+/* 扫光层：参数由 apply_theme 按 theme.json effects.sheen 注入（noir 默认关闭） */
+.css-kb8n67::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: __SHEEN_BACKGROUND__;
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  animation: __SHEEN_ANIMATION__;
+}
+/* 粒子层结构（tile 由项目主题素材提供）；动效由项目 effects.css 注入下方占位符 */
+.css-kb8n67::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("background/title_particles.png");
+  background-repeat: repeat;
+}
+/*__FX_CSS__*/
+
+/* 对话框底板不透明度拉满（压过用户档位设置，保证皮肤观感） */
+div:has(+ #textBoxMain) {
+  opacity: 1 !important;
+}
+
+body {
+  background-color: #05070C;
+}

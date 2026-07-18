@@ -1,0 +1,31 @@
+{
+  "name": "midnight",
+  "mood": "深夜/治愈/燃/成长",
+  "primary": "#E8A33D",
+  "text": "#E8E4DC",
+  "particle": {
+    "type": "motes",
+    "color": "#F0C878",
+    "count": 40,
+    "duration": "9s"
+  },
+  "cover": {
+    "stroke": "#E8A33D",
+    "prompt_mood": "midnight city street, warm amber street lamps against deep blue night, nostalgic atmosphere, negative space in upper half"
+  },
+  "hud": "深色半透明面板 + 琥珀描边名签 + 锐利选择支卡片",
+  "effects": {
+    "sheen": {
+      "enabled": true,
+      "tint": "240,200,120",
+      "peak": 0.14,
+      "duration": "14s"
+    },
+    "kenburns": {
+      "duration": "16s",
+      "zoomFrom": "104%",
+      "zoomTo": "115%"
+    },
+    "fallback": "linear-gradient(180deg, #10131E 0%, #1D2438 60%, #3A3226 100%)"
+  }
+}

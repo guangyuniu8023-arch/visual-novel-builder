@@ -1,0 +1,31 @@
+{
+  "name": "simple",
+  "mood": "日常/简约/正剧",
+  "primary": "#5B8DC9",
+  "text": "#FFFFFF",
+  "particle": {
+    "type": "petals",
+    "color": "#D7E4F5",
+    "count": 26,
+    "duration": "13s"
+  },
+  "cover": {
+    "stroke": "#5B8DC9",
+    "prompt_mood": "warm golden hour, soft light, gentle atmosphere"
+  },
+  "hud": "极简扁平对话框 + 蓝色系按钮",
+  "effects": {
+    "sheen": {
+      "enabled": true,
+      "tint": "255,255,255",
+      "peak": 0.2,
+      "duration": "12s"
+    },
+    "kenburns": {
+      "duration": "14s",
+      "zoomFrom": "104%",
+      "zoomTo": "117%"
+    },
+    "fallback": "linear-gradient(180deg, #D7E4F5 0%, #F5F8FC 100%)"
+  }
+}

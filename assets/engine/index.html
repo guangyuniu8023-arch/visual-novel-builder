@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 视觉小说生成器：封面图最高优先级预载，首屏即动态封面 -->
+    <link rel="preload" as="image" href="./game/background/title_main.jpg" />
+    <link rel="preload" as="image" href="./game/background/title_particles.png" />
+    <link rel="icon" type="image/x-icon" href="./icons/favicon.ico" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.json" />
+    <title>WebGAL</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: black;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .html-body__effect-background {
+        height: 100vh;
+        width: 100vw;
+        filter: blur(50px);
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: black;
+      }
+
+      .html-body__effect-background-overlay {
+        height: 100%;
+        width: 100%;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: black;
+        opacity: 0;
+      }
+
+      .html-body__title-enter {
+        /* 视觉小说生成器：竖屏舞台尺寸（原 2560×1440 横屏尺寸会错位残留） */
+        width: 1440px;
+        height: 2560px;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        z-index: 14;
+        opacity: 1;
+        transition: opacity 1.5s;
+      }
+
+      .title-enter__initial-background {
+        height: 100%;
+        width: 100%;
+        position: absolute;
+        /* 视觉小说生成器：落地页即动态封面——首屏第一帧就是封面图，无黑屏加载期 */
+        background: url(./game/background/title_main.jpg) center / cover no-repeat, __COVER_FALLBACK__;
+        top: 0;
+        opacity: 1;
+        transition: opacity 1s;
+        animation: titleKenBurns __KB_DURATION__ ease-in-out infinite alternate;
+      }
+
+      /* 动态封面三层：Ken Burns 推拉 + 扫光 + 粒子（落地页层）。
+         扫光/推拉参数均为占位符，由 apply_theme 按 theme.json effects 配方注入 */
+      @keyframes titleKenBurns {
+        0%   { background-size: auto __KB_ZOOM_FROM__, cover; background-position: 50% 16%, center; }
+        100% { background-size: auto __KB_ZOOM_TO__, cover; background-position: 50% 48%, center; }
+      }
+      .html-body__title-enter::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: __SHEEN_BACKGROUND__;
+        background-size: 260% 260%;
+        background-repeat: no-repeat;
+        animation: __SHEEN_ANIMATION__;
+        z-index: 2;
+      }
+      @keyframes titleSheen {
+        0%   { background-position: 130% 0; }
+        55%  { background-position: -90% 0; }
+        100% { background-position: -90% 0; }
+      }
+      .html-body__title-enter::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-image: url(./game/background/title_particles.png);
+        background-repeat: repeat;
+        z-index: 3;
+      }
+      /* 动效注入点：引擎不预置任何粒子/氛围动效。
+         每个项目的动效由 agent 按主题从零设计（见 references/build.md 推导法），
+         产出 effects.css，由 apply_theme 注入到下方动效占位符。
+         注入内容至少包含：@keyframes 定义 + 同时选中落地页层
+         (.html-body__title-enter::before) 与 React 封面层 (.css-kb8n67::before)
+         的 animation 规则；可追加第二层（征用 ::after）等自由扩展。 */
+      /*__FX_CSS__*/
+
+      .title-enter__white-background {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        opacity: 0;
+        background: linear-gradient(
+          165deg,
+          rgba(255, 255, 255, 0.25) 0%,
+          rgba(255, 255, 255, 1) 50%,
+          rgba(255, 255, 255, 0.25) 100%
+        );
+        transition: opacity 1s;
+      }
+
+      .title-enter__container {
+        width: 100%;
+        position: absolute;
+        top: 0;
+        height: 100%;
+        opacity: 1;
+        font-size: 175%;
+        transition: opacity 1s;
+        z-index: 15;
+        font-family: '思源宋体', Georgia, serif;
+      }
+
+      .title-enter-container__center-text {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .title-enter-container__center-text > div {
+        letter-spacing: 0.25em;
+        padding: 2em 2em 2em 2em;
+        text-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+        transition: text-shadow 1s;
+        font-size: 175%;
+        animation: title-enter-container__center-text--blink 4s infinite;
+        /* 视觉小说生成器：封面自排标题，隐藏加载提示文字 */
+        display: none;
+      }
+
+      /* 视觉小说生成器：隐藏落地页底部的引擎链接 */
+      .title-enter-container__link-to-github {
+        display: none !important;
+      }
+
+      @keyframes title-enter-container__center-text--blink {
+        0% {
+          text-shadow: 0 0 15px rgba(0, 0, 0, 0.65);
+        }
+        50% {
+          text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        100% {
+          text-shadow: 0 0 15px rgba(0, 0, 0, 0.65);
+        }
+      }
+
+      .title-enter-container__link-to-github {
+        position: absolute;
+        bottom: 1em;
+        color: #999;
+        font-size: 75%;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        flex-flow: column;
+        align-items: center;
+      }
+
+      .title-enter-container__link-to-github > div {
+        padding: 0 0 0.25em 0;
+      }
+
+    </style>
+    <script type="module" crossorigin src="./assets/index-mOVN9GDg.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-aMU-rmLJ.css">
+  </head>
+  <body>
+    <!-- 背景模糊 -->
+    <div id="ebg" class="html-body__effect-background">
+      <div id="ebgOverlay" class="html-body__effect-background-overlay"></div>
+    </div>
+    <!-- 落地页 -->
+    <div class="html-body__title-enter">
+      <div class="title-enter__initial-background"></div>
+      <div class="title-enter__white-background"></div>
+      <div class="title-enter__container">
+        <div class="title-enter-container__center-text">
+          <div>PRESS THE SCREEN TO START</div>
+        </div>
+        <div class="title-enter-container__link-to-github">
+          <div>Powered by <a> WebGAL </a> Framework</div>
+        </div>
+      </div>
+    </div>
+    <!-- 紧急回避页挂载点 -->
+    <div id="html-body__panic-overlay"></div>
+    <!-- 应用挂载点 -->
+    <div id="root"></div>
+    <script>
+      // 视觉小说生成器：默认简体中文，跳过语言选择
+      if (!localStorage.getItem('lang')) { localStorage.setItem('lang', '0'); }
+      // 视觉小说生成器：落地页动态封面 → React 标题页接力。
+      // 引擎的自动 enter 点击分发不到落地页（target 与 titleEnter 非父子），
+      // 导致落地页永不退场、错位残留。这里监听 React 标题页出现后淡出落地页。
+      (function () {
+        function hideEnter() {
+          var te = document.querySelector('.html-body__title-enter');
+          if (te && te.style.display !== 'none') {
+            te.style.pointerEvents = 'none';
+            te.style.transition = 'opacity 1s';
+            te.style.opacity = '0';
+            setTimeout(function () { te.style.display = 'none'; }, 1100);
+          }
+        }
+        var obs = new MutationObserver(function () {
+          if (document.querySelector('.title__enter-game-target')) {
+            setTimeout(hideEnter, 300); // 等 React 封面图就位
+            obs.disconnect();
+          }
+        });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+      })();
+      (() => {
+        const userAgent = navigator.userAgent || '';
+        const platform = navigator.userAgentData?.platform || navigator.platform || '';
+        const maxTouchPoints = navigator.maxTouchPoints || 0;
+        const isIOSPhone = /iPhone|iPod/i.test(userAgent);
+        const isIPad = /iPad/i.test(userAgent) || (/Mac/i.test(platform) && maxTouchPoints > 1);
+
+        window.__WEBGAL_DEVICE_INFO__ = {
+          isIOS: isIOSPhone || isIPad,
+          isIOSPhone,
+          isIPad,
+        };
+      })();
+    </script>
+    <!-- 在窗口大小改变时进行强制缩放 -->
+    <script>
+      (() => {
+        const deviceInfo = window.__WEBGAL_DEVICE_INFO__ ?? { isIOS: false };
+        const isIOS = deviceInfo.isIOS;
+        const layoutConfig = isIOS
+          ? {
+              bottomInset: 15,
+              resizeDelay: 500,
+              viewport:
+                'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover',
+              hideEffectBackground: true,
+            }
+          : {
+              bottomInset: 0,
+              resizeDelay: 0,
+              viewport: 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no',
+              hideEffectBackground: false,
+            };
+        const root = document.querySelector('#root');
+        const titleEnter = document.querySelector('.html-body__title-enter');
+        const effectBackground = document.querySelector('.html-body__effect-background');
+        let viewportMeta = document.querySelector('meta[name="viewport"]');
+
+        const ensureViewportMeta = () => {
+          if (!viewportMeta) {
+            viewportMeta = document.createElement('meta');
+            viewportMeta.name = 'viewport';
+            document.head.appendChild(viewportMeta);
+          }
+          return viewportMeta;
+        };
+
+        const resize = () => {
+          // 竖屏原生布局：设计舞台 1440×2560（9:16）
+          const targetHeight = 2560; // 目标高度
+          const targetWidth = 1440; // 目标宽度
+          const h = window.innerHeight; // 窗口高度
+          const w = window.innerWidth; // 窗口宽度
+          const layoutHeight = Math.max(h - layoutConfig.bottomInset, 1);
+          const zoomH = layoutHeight / targetHeight; // 以窗口高度为基准的变换比
+          const zoomW = w / targetWidth; // 以窗口宽度为基准的变换比
+          const zoom = Math.min(zoomW, zoomH); // 等比缩放，完整容纳舞台
+          const tx = (w - targetWidth) / 2; // x轴居中位移
+          const ty = (layoutHeight - targetHeight) / 2; // y轴居中位移
+          const transform = `translate(${tx}px, ${ty}px) ` + `scale(${zoom}, ${zoom}) `;
+          const elements = [root, titleEnter];
+          if (effectBackground) {
+            effectBackground.style.height = `100vh`;
+            effectBackground.style.width = `100vw`;
+            effectBackground.style.transform = '';
+          }
+          for (const element of elements) {
+            if (element) {
+              element.style.transform = transform;
+            }
+          }
+        };
+        let iosResizeTimer = null;
+        const scheduleResize = () => {
+          if (layoutConfig.resizeDelay > 0) {
+            if (iosResizeTimer) {
+              window.clearTimeout(iosResizeTimer);
+            }
+            iosResizeTimer = window.setTimeout(() => {
+              resize();
+              iosResizeTimer = null;
+            }, layoutConfig.resizeDelay);
+            return;
+          }
+          resize();
+        };
+        if (isIOS) {
+          const styleTag = document.createElement('style');
+          styleTag.textContent = `* { font-synthesis: none !important; }`;
+          if (layoutConfig.hideEffectBackground) {
+            styleTag.textContent += `
+              #ebg,
+              #ebgOverlay {
+                display: none !important;
+              }
+            `;
+          }
+          document.head.appendChild(styleTag);
+        }
+        ensureViewportMeta().content = layoutConfig.viewport;
+        scheduleResize();
+        window.onload = scheduleResize;
+        window.onresize = scheduleResize;
+        // 监听键盘 F11 键按下事件，全屏时触发页面调整
+        document.onkeydown = (e) => {
+          if (e && e.key === 'F11') {
+            setTimeout(() => {
+              scheduleResize();
+            }, 100);
+          }
+        };
+      })();
+    </script>
+    <!-- 注册 Service Worker -->
+    <script>
+      (() => {
+        const isIOS = window.__WEBGAL_DEVICE_INFO__?.isIOS ?? false;
+        const localHostnames = ['localhost', '127.0.0.1', '::1'];
+        const isLocalPreview = localHostnames.includes(window.location.hostname) || window.location.protocol === 'file:';
+        const isElectron = Boolean(window.electronFuncs) || /Electron/i.test(navigator.userAgent || '');
+        const shouldBypassServiceWorker = isIOS || isLocalPreview || isElectron;
+        const webgalServiceWorkerUrl = new URL('./webgal-serviceworker.js', window.location.href).href;
+        const bypassReloadKey = 'webgal-sw-bypass-reloaded';
+        const isWebGALRegistration = (registration) => {
+          const workers = [registration.active, registration.installing, registration.waiting];
+          return workers.some((worker) => worker?.scriptURL === webgalServiceWorkerUrl);
+        };
+        const markBypassReload = () => {
+          try {
+            if (sessionStorage.getItem(bypassReloadKey) === 'true') {
+              return false;
+            }
+            sessionStorage.setItem(bypassReloadKey, 'true');
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        const clearBypassReloadMark = () => {
+          try {
+            sessionStorage.removeItem(bypassReloadKey);
+          } catch {}
+        };
+        const clearWebGALServiceWorker = async () => {
+          try {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            const webgalRegistrations = registrations.filter(isWebGALRegistration);
+            const hasWebGALController = navigator.serviceWorker.controller?.scriptURL === webgalServiceWorkerUrl;
+            await Promise.all(webgalRegistrations.map((registration) => registration.unregister()));
+            if ('caches' in window) {
+              const cacheKeys = await caches.keys();
+              await Promise.all(cacheKeys.filter((key) => key.startsWith('webgal-')).map((key) => caches.delete(key)));
+            }
+            if ((webgalRegistrations.length > 0 || hasWebGALController) && navigator.serviceWorker.controller && markBypassReload()) {
+              window.location.reload();
+            }
+          } catch (error) {
+            console.warn('Failed to clear WebGAL Service Worker cache', error);
+          }
+        };
+        if (!('serviceWorker' in navigator)) {
+          return;
+        }
+        if (shouldBypassServiceWorker) {
+          clearWebGALServiceWorker();
+          return;
+        }
+        if (!window.isSecureContext) {
+          return;
+        }
+        clearBypassReloadMark();
+        navigator.serviceWorker
+          .register('./webgal-serviceworker.js')
+          .then((reg) => {
+            console.log('Registration succeeded. Scope is ' + reg.scope);
+          })
+          .catch((error) => {
+            console.log('Registration failed with ' + error);
+          });
+      })();
+    </script>
+    <!-- 首屏加载 -->
+    <script>
+      (() => {
+        const isIOS = window.__WEBGAL_DEVICE_INFO__?.isIOS ?? false;
+        const enterConfig = isIOS
+          ? { skipAnimation: true, hideDelay: 0 }
+          : { skipAnimation: false, hideDelay: 2000 };
+        let enterPromiseResolve;
+        const enterPromise = new Promise((res) => {
+          enterPromiseResolve = res;
+        });
+        const renderPromise = new Promise((res) => {
+          window.renderPromiseResolve = () => {
+            res();
+            delete window.renderPromiseResolve;
+          };
+        });
+        // 将播放bgm的事件发送出去
+        Promise.all([enterPromise, renderPromise]).then(() => {
+          const event = new MouseEvent('click', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+          });
+          const target = document.querySelector('.title__enter-game-target');
+          if (target) {
+            target.dispatchEvent(event);
+          }
+        });
+        /** 点击屏幕，进入引擎主界面 */
+        const enter = () => {
+          const titleEnter = document.querySelector('.html-body__title-enter');
+          if (enterConfig.skipAnimation) {
+            if (titleEnter) {
+              titleEnter.style.pointerEvents = 'none';
+              titleEnter.style.transition = 'none';
+              titleEnter.style.opacity = '0';
+              titleEnter.style.display = 'none';
+            }
+            enterPromiseResolve();
+            return;
+          }
+          const initialBackground = document.querySelector('.title-enter__initial-background');
+          if (initialBackground) {
+            initialBackground.style.opacity = '0';
+          }
+          const container = document.querySelector('.title-enter__container');
+          if (container) {
+            container.style.opacity = '0';
+          }
+          const whiteBackground = document.querySelector('.title-enter__white-background');
+          setTimeout(() => {
+            if (whiteBackground) {
+              whiteBackground.style.opacity = '1';
+            }
+          }, 50); // 在50ms后开始显示白色渐变
+          setTimeout(() => {
+            if (titleEnter) titleEnter.style.opacity = '0';
+          }, 500); // 500ms后开始降低落地页透明度
+          if (!isIOS && titleEnter) {
+            titleEnter.style.pointerEvents = 'none'; // 落地页不再响应点击
+            titleEnter.style.background = '__ENTER_FLASH__'; // 点击闪色（主题 primary 派生，apply_theme 注入）
+          }
+          setTimeout(() => {
+            if (titleEnter) {
+              titleEnter.style.display = 'none';
+            }
+          }, enterConfig.hideDelay); // 将落地页设置为不显示
+          enterPromiseResolve();
+        };
+        const titleEnter = document.querySelector('.html-body__title-enter');
+        if (titleEnter) {
+          titleEnter.onclick = enter;
+        }
+        const linkToGithub = document.querySelector('.title-enter-container__link-to-github');
+        const aTag = linkToGithub?.querySelector('a');
+        if (aTag) {
+          aTag.href = 'https://github.com/OpenWebGAL/WebGAL';
+          aTag.onclick = (event) => event.stopPropagation();
+        }
+      })();
+    </script>
+    <!-- 加载IIFE插件 -->
+    <script>
+      (() => {
+        const loadScript = (url, type) => {
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = url;
+            if (type) script.type = type;
+            script.onload = () => resolve(`Loaded: ${url}`);
+            script.onerror = () => reject(new Error(`Failed to load: ${url}`));
+            document.head.appendChild(script);
+          });
+        };
+        const loadIifePlugin = async (pluginPath) => {
+          try {
+            const info = await loadScript(pluginPath);
+            console.log(info);
+            return true;
+          } catch (error) {
+            console.warn(error);
+            return false;
+          }
+        };
+        // 尝试加载 Live2D SDK，
+        // 只有在用户自行取得 Live2D 许可并放到下面的目录时，这里才可能加载成功。
+        // 本项目 **没有** 引入 Live2D SDK
+        // Attempt to load the Live2D SDK.
+        // This will only succeed if the user has obtained a Live2D license and placed it in the directory below.
+        // This project **does not** include the Live2D SDK.
+        // Live2D SDK の読み込みを試みます。
+        // ユーザーが Live2D ライセンスを取得し、以下のディレクトリに配置した場合のみ、読み込みが成功します。
+        // このプロジェクトには Live2D SDK は**含まれていません**
+        // 视觉小说生成器：本引擎不附带 Live2D SDK，默认跳过加载以避免 404 噪音。
+        // 需要 Live2D 时在页面加载前设置 window.__WEBGAL_ENABLE_LIVE2D__ = true。
+        if (window.__WEBGAL_ENABLE_LIVE2D__) {
+          const live2d2Promise = loadIifePlugin('lib/live2d.min.js');
+          const live2d4Promise = loadIifePlugin('lib/live2dcubismcore.min.js');
+          window.live2dPromise = Promise.all([live2d2Promise, live2d4Promise]);
+        } else {
+          window.live2dPromise = Promise.resolve(false);
+        }
+      })();
+    </script>
+    <!-- main文件 -->
+  </body>
+</html>

@@ -1,0 +1,81 @@
+/* 二次元 anime-fresh · 竖屏标题页 */
+
+.Title_main {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 13;
+}
+
+.Title_buttonList {
+  display: flex;
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+  align-items: center;
+  flex-flow: column;
+  padding: 620px 0 0 0;
+  box-sizing: border-box;
+}
+
+.Title_button {
+  &:not(:first-child) {
+    display: none;
+  }
+  font-weight: 700;
+  text-align: center;
+  min-width: 560px;
+  cursor: pointer;
+  padding: 28px 76px;
+  margin: 16px 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(4px);
+  border: 5px solid #ffffff;
+  box-shadow: 0 8px 26px rgba(255, 143, 171, 0.4);
+  transform: none;
+  transition: all 0.3s;
+}
+
+.Title_button:hover {
+  background: linear-gradient(135deg, #B97A1F 0%, #E8A33D 100%);
+  text-shadow: none;
+  padding: 28px 76px;
+  transform: scale(1.05);
+}
+
+.Title_button:hover .Title_button_text {
+  color: #ffffff;
+}
+
+.Title_button_text {
+  font-size: 180%;
+  color: #E8A33D;
+  padding: 0 0.5em;
+  letter-spacing: 0.2em;
+  transition: color 0.3s;
+}
+
+.Title_button_text_outer {
+  display: none;
+}
+
+.Title_button_text_inner {
+  display: none;
+}
+
+.Title_backup_background {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  z-index: 13;
+  background: linear-gradient(160deg, #2A2E3C 0%, #3A3226 100%);
+}
+
+.Title_button_disabled {
+  cursor: not-allowed !important;
+  opacity: 0.5;
+}

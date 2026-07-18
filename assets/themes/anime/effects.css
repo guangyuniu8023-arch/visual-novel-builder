@@ -1,0 +1,14 @@
+/* anime 皮肤默认动效（骨架兜底：项目根 effects.css 存在时会被覆盖）
+   推导：恋爱/日常暖系 → 花瓣受风飘落 = 缓降 + 左右摇曳（正弦式往返，横向回零）
+   无缝：纵向 2560px 整数倍，横向 0→60→0→-60→0 回零 */
+@keyframes animePetalDrift {
+  0%   { background-position: 0 0; }
+  25%  { background-position: 60px 640px; }
+  50%  { background-position: 0 1280px; }
+  75%  { background-position: -60px 1920px; }
+  100% { background-position: 0 2560px; }
+}
+.html-body__title-enter::before,
+.css-kb8n67::before {
+  animation: animePetalDrift 13s linear infinite;
+}

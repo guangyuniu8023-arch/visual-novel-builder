@@ -1,0 +1,12 @@
+/* midnight 皮肤默认动效（骨架兜底：项目根 effects.css 存在时会被覆盖）
+   推导：深夜街道/琥珀路灯 → 灯尘悬浮 = 比暖木更慢的上浮 + 更深的呼吸谷值
+   无缝：纵向 -2560px 整数倍（向上），横向 0→40→0 回零 */
+@keyframes midnightDustRise {
+  0%   { background-position: 0 0;         opacity: 0.45; }
+  50%  { background-position: 40px -1280px; opacity: 0.9; }
+  100% { background-position: 0 -2560px;    opacity: 0.45; }
+}
+.html-body__title-enter::before,
+.css-kb8n67::before {
+  animation: midnightDustRise 12s linear infinite;
+}

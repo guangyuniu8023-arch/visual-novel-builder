@@ -1,0 +1,28 @@
+{
+  "name": "warmwood",
+  "mood": "治愈/日常/温情",
+  "primary": "#C8925A",
+  "text": "#EAE2D5",
+  "particle": {
+    "type": "motes",
+    "color": "#E8C890",
+    "count": 30,
+    "duration": "10s"
+  },
+  "cover": {
+    "stroke": "#C8925A",
+    "prompt_mood": "rainy night workshop interior, warm lamp light, wood shavings, plants on windowsill, cozy healing atmosphere"
+  },
+  "hud": "暖木深色面板+木色描边名签+圆角卡片选择支",
+  "effects": {
+    "sheen": {
+      "enabled": false
+    },
+    "kenburns": {
+      "duration": "16s",
+      "zoomFrom": "103%",
+      "zoomTo": "112%"
+    },
+    "fallback": "linear-gradient(180deg, #1A140E 0%, #2E2318 100%)"
+  }
+}

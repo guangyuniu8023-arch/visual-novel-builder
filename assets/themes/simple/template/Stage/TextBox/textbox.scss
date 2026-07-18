@@ -1,0 +1,132 @@
+/* ============================================
+   简约 modern-minimal · 竖屏对话框
+   设计坐标系 1440×2560
+   基调：白 0.94 面板 / 灰蓝 accent #4A5B7D / 无衬线
+   ============================================ */
+
+.TextBox_main {
+  z-index: 3;
+  position: absolute;
+  left: 32px;
+  right: 32px;
+  bottom: 36px;
+  min-height: 380px;
+  max-height: 380px;
+  border-radius: 28px;
+  color: #2E3440;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 100px 80px 56px 80px;
+  box-sizing: border-box;
+  display: flex;
+  flex-flow: column;
+  align-items: flex-start;
+  transition: left 0.33s;
+}
+
+.TextBox_main_miniavatarOff {
+  left: 32px;
+}
+
+.TextBox_Background {
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 48px rgba(20, 24, 40, 0.28);
+  border: none;
+  backdrop-filter: none;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+/* 说话人名牌：accent 胶囊，浮在框上沿 */
+.TextBox_showName {
+  font-size: 82%;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 0 48px;
+  position: absolute;
+  left: 72px;
+  top: -34px;
+  height: 72px;
+  line-height: 68px;
+  border-radius: 36px;
+  color: #ffffff;
+  z-index: 3;
+  border: none;
+}
+
+.TextBox_ShowName_Background {
+  z-index: 2;
+  background: #4A5B7D;
+  border: none;
+  box-shadow: 0 6px 20px rgba(74, 91, 125, 0.45);
+}
+
+/* 正文文字：去掉描边渐变，纯深色 */
+.outer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  background-image: none;
+  background-clip: border-box;
+  -webkit-background-clip: border-box;
+  color: #2E3440;
+  z-index: 2;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.inner {
+  white-space: nowrap;
+  position: absolute;
+  left: 0;
+  top: 0;
+  -webkit-text-stroke: 0;
+  z-index: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* 名牌文字 */
+.outerName {
+  color: #ffffff;
+}
+
+.innerName {
+  -webkit-text-stroke: 0;
+}
+
+/* mini 头像（本模板默认不用，保底样式） */
+.miniAvatarContainer {
+  display: none;
+}
+
+.miniAvatarImg {
+  display: none;
+}
+
+.TextBox_textElement_start {
+  position: relative;
+  animation: TextDelayShow 600ms ease-out forwards;
+  opacity: 0;
+  display: inline-flex;
+  align-content: space-between;
+}
+
+.TextBox_textElement_Settled {
+  position: relative;
+  opacity: 1;
+  display: inline-flex;
+  align-content: space-between;
+}
+
+@keyframes TextDelayShow {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes showSoftly {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}

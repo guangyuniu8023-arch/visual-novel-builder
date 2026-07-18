@@ -1,0 +1,254 @@
+# CHANGELOG
+
+## 2026-07-19 · 验收蒸馏版 v7.1（skill 结构审查补链）
+
+以"零上下文 coding agent 能否照文档走完 INTAKE→DELIVER 全流程"视角通读全部文档，
+发现并修复三个断点：
+
+- **音频资产无来源**（真断点）：GDD 会问配音/BGM、剧本有 `bgm:` 语法、config.txt 有
+  `Title_bgm` 字段，但没有任何文档说音频文件从哪来。art-director.md 新增第 7 节
+  「音频资产」：用户不上传音频，来源收窄为两种（免版税库下载+授权注明 / 无音频则
+  剧本禁写 bgm 语句），禁止虚构音频 URL；预留外部音频工具扩展口，后续接入时扩展本节
+- **effects.css/tile 编写时机不显式**：装配流程上来就跑 assemble_build.sh，
+  缺料靠报错驱动回退。build.md 装配流程加「前置备齐」清单（effects.css +
+  title_particles.png，缺一即报错）
+- **DELIVER 无定义**：状态机有阶段无内容。SKILL.md 补交付形态：最终产物是聊天窗口内
+  可玩的 H5——本地预览 URL + build/ 自包含目录，**明确不做公网部署**（用户确认产品
+  定义），交付报告要素（结局数/QA 结论/已知简化项）
+
+另：art-director.md 第 6 节补「同 IP 双版本对仗」推导示例（第三小时自由版琥珀霓虹
+vs 孤独版冷青细宋，与动效上浮/沉降同一条推导链）。
+
+## 2026-07-19 · 验收蒸馏版 v7（封面直出：标题与背景统一由生图模型负责）
+
+用户需求："opening 的标题和背景能否统一由生图模型负责"——此前流程是生图出底图 +
+`bake_title.py` PIL 后期叠字，字体排版全局同一套，与"视觉随主题变化"原则不符。
+
+### 实测依据
+
+- 生图模型（agent_gw）直出含三层标题的 9:16 封面：中文主标题四字全对、英文副标
+  字距正确、手写 tagline 全对；且主标题宋体自动带出**木刻纹理**（呼应木工题材）——
+  字体设计随主题变化正是 PIL 叠字做不到的能力
+- 结论：可行且观感优于后期叠字，改为主流程；文字渲染存在抽样随机性，
+  故"校对+降级"为必经配套
+
+### 改动
+
+- **art-director.md 第 6 节重写为直出流程**：一条 prompt 写清画面（标题落区压暗/
+  留白）+ 标题三层（主标题确切文字 + **字体气质推导**（随题材：木工=刻痕宋体、
+  街舞=涂鸦粗黑、深夜电台=细宋微光）+ `cover.stroke` 色系 / 英文副标宽字距 /
+  tagline ≤14 字手写感），附参考句式
+- **文字校对为必经 QA**：VLM 逐字核对主标题/副标/tagline，错字缺字即重抽；
+  连错 3 次降级——prompt 删文字要求出干净底图，`bake_title.py` 后期排版
+- **`bake_title.py` 新增 `--shrink-only`**：直出封面的入库瘦身步骤
+  （>1440 宽缩 1440 + progressive JPEG，防返回标题页解码灰块）；
+  排版功能保留为降级路径
+- build.md 封面条目、SKILL.md 工具表、qa.md 返回标题页复检同步
+
+### 验证
+
+- 直出样张文字三层全对、字体设计随主题；`--shrink-only` 实测输出
+  1440×2560 progressive（progressive=1）
+- 《雨停之前》封面已换直出版（8321 在跑）：首版纯文字 prompt 翻车后确立
+  **参考图按构图决定**——构图含角色必须 `--ref` 角色图，纯场景不带；
+  并立「生图调用规范」（art-director.md 第 2 节）：每次调用必须产出
+  完整自包含 prompt + 明确输入图 + manifest.json 落档（prompt/ref 字段），
+  可复现、可审查、翻车可溯源
+
+## 2026-07-18 · 验收蒸馏版 v6（动效从零：废除词汇库，引擎零预置）
+
+用户否掉 v5 词汇库的本质："不是要一个模版让 skill 从模版里选，是根据主题来判断动态效果……
+真正从 0 做动效。你现在这个动效不是有现成的引擎吗？"——引擎本身就是 HTML/CSS/JS 运行时，
+接入的 coding agent 有能力为每个主题从零写动效代码，skill 该教方法论而不是给菜单。
+
+### 改动
+
+- **引擎瘦身**：index.html 删除全部预置 keyframes（5 类词汇库 + particleFall 兜底），
+  只留挂载点——落地页/ React 双端粒子层结构 + `/*__FX_CSS__*/` 注入占位符
+- **apply_theme 重写注入逻辑**：动效本体 = 项目根 `effects.css`（项目级优先，
+  主题皮肤级 effects.css 骨架兜底，两者皆无报错）；同时校验
+  `title_particles.png` 存在（tile 是项目素材，脚本不再按枚举配方代生成，
+  `--keep-particles` 与 `.recipe` marker 机制一并移除）
+- **5 皮肤各补一份默认 effects.css**（anime 花瓣摇曳 / noir 急雨 / warmwood 暖尘上浮 /
+  midnight 灯尘慢浮 / simple 极缓直落），定位是骨架兜底，项目级推导永远优先
+- **build.md 新增「动效设计」方法论**：意象 → 运动语义 → 技术选型（单层平铺 /
+  双层视差征用 ::after / 透明度呼吸）→ 参数 → effects.css 五条铁律
+  （双端同选 / keyframes 项目前缀 / 无缝约束 / 推导句注释 / 两帧验收）；
+  SKILL.md 硬规则新增第 7 条「粒子动效从零设计」；qa.md 验收同步
+- **4 个项目从零写动效重应用**（computedStyle 实测双端动画名+时长）：
+  - 雨停之前：双层视差——暖尘上浮 14s（::before）× 玻璃雨痕缓坠 7s（::after，
+    征用 sheen 关闭后的空闲层）——室内的暖与窗外的雨，治愈系的慢雨
+  - 同一场雨：双层对撞——暖尘上浮 9s × 暴雨直坠 4s——同一场雨里的两个人；
+    与雨停之前同为雨主题，雨速 4s vs 7s：**速度从情绪推**（决赛暴雨 vs 等待之雨）
+  - 第三小时·自由版：灯尘上扬 8s + 横向 ±50px 漂移 + 深呼吸——自由是动的
+  - 第三小时·孤独版：灯尘**沉降** 16s + 近乎静止 + 深谷呼吸——与自由版方向相反：
+    **方向从基调推**（同 IP 两版本动效对仗）
+  - 两个雨项目各配专属雨 tile（疏 40 条 / 密 110 条，gen_particles 自由参数绘制）
+
+### 踩坑记录
+
+- effects.css 经环境变量插值进 perl replacement 端时 `@keyframes` 的 `@` 被当数组
+  插值吞掉——改为 perl 直接读文件作变量值替换
+- 引擎/皮肤注释里写了 `__FX_CSS__` 字面量，残留检查误报导致循环提前 exit——
+  检查改为匹配完整占位符 `/*__FX_CSS__*/`，注释不再出现裸字面量
+
+### 验证
+
+- 4 build 双端零占位符残留；computedStyle 读回：rain-wood before=rainwoodDustRise/14s
+  after=rainwoodStreakFall/7s；eaves-rain before=eavesDustRise/9s after=eavesRainFall/4s；
+  third-free before=thirdFreeDustRise/8s（::after 保留琥珀扫光）；third-lonely
+  before=thirdLonelyDustSink/16s（同左）
+- 两帧像素 diff（间隔 2.5s）：四游戏变化区域 14.8%–53.5%，运动量与推导速度一致
+- demo 页改为「从零动效验收台」：iframe 实时嵌入四游戏封面，标注各自动效语义与对照读法
+
+## 2026-07-18 · 验收蒸馏版 v5（粒子动效词汇库）
+
+用户指出：改完配方后各游戏粒子"看起来还是一样"——因为只参数化了 tile 与时长，
+**运动行为仍是全局同一种垂直下落**，此前的"推导"沦为给现状找合理化理由。
+
+### 改动
+
+- **动效词汇库落地**：引擎 index.html 全局定义 5 类类型专属 keyframes（双端共用）——
+  petals=飘落+左右摇曳 / rain=快速直坠 / motes=缓慢上浮+明暗呼吸 / snow=缓降+慢摆 /
+  fog=水平流动+呼吸。无缝性依赖 background-repeat：纵向位移=2560px 整数倍、
+  横向回零或 1440 整数倍（库注释写明约束，防后人加破缝运动）
+- **类型即行为**：apply_theme 按 particle.type 注入动效名（`__PARTICLE_ANIMATION__`
+  占位符）+ 时长，落地页与 React 层双端同步；`particle.motion` 可覆盖默认
+- 该词汇库正是 gen_particles.py docstring 里"宣称"但从未实现的动效——补齐兑现
+- build.md 推导法粒子行更新：形状由 tile 承担、行为由类型承担，
+  "所有粒子都是圆点垂直下落"明列为反例
+
+### 验证
+
+- 4 个 build 双端注入 particleMotes（9s/10s）
+- 两帧对比实证：亮尘质心 2s 上移 9px（原为下落），呼吸闪烁生效
+
+## 2026-07-18 · 验收蒸馏版 v4（推导优先，废除查表）
+
+用户原则：主题参数必须由 VLM 从内容主体+设计规范推导，不要表单式匹配规则。
+审计确认此前是"半表单"（5 预设主题 + 题材映射表），本轮改为推导优先。
+
+### 样例回填
+
+4 个实战 GDD 已按新格式补写「推导依据」节，作为后续 agent 的参考样例：
+- case2《雨停之前》：场景光源推导（台灯→木色→木屑光尘→无移动光源关扫光）
+- case3《同一场雨》：配方复用时的推导继承 + 增量推导（封面双人构图）
+- case1《第三小时》：角色代表色×街灯意象的完整推导链
+- case5《第三小时》：**用户指定优先**的推导路径（指定氛围作第一约束，wiki 退为第二层）+ "参数相同是推导收敛而非查表复制"的论证
+
+### 改动
+
+- **build.md 新增「视觉策略推导法」**（强制三步）：① 从角色卡/剧情提炼视觉意象
+  （代表色、核心场景光源、情绪温度）→ ② 逐参数推导（primary=场景光源×代表色交集、
+  粒子=场景里真实存在的漂浮物、扫光=世界里有没有移动光源、推拉=叙事节奏、
+  兜底=封面暗部色调）→ ③ 理由落档（GDD 每参数带推导句，写不出=没推导，回炉）
+- **废除映射表**：build.md 的"题材默认映射"（恋爱=petals/悬疑=rain）与 intake.md
+  的"题材→预设主题"默认列全部删除，改为推导法指引
+- **预设主题重新定位**：anime/noir/warmwood/midnight/simple 仅作 SCSS 结构骨架
+  与兜底起点，禁止直接套预设交差
+- **qa.md 第 7 条**：主题参数无推导依据句或见查表痕迹 = INTAKE 回炉
+
+### 为什么粒子/扫光推导成立（示例，已写入文档）
+
+《第三小时》midnight：primary=琥珀取自 wiki"深夜骑电动车兜风"的街灯意象；
+粒子=motes 因为深夜街道漂浮的是灯尘；扫光保留但琥珀低峰——深夜街道有车灯这个
+"移动光源"。《雨停之前》warmwood：扫光关闭——木工房里没有移动光源。
+
+## 2026-07-18 · 验收蒸馏版 v3（视觉参数零硬编码）
+
+用户声明原则：整个 agent 的视觉素材策略必须随上传内容变化，不能有任何定死部分。
+全量审计后补齐残余硬编码，并把原则立为硬规则。
+
+### 审计发现的残余硬编码（已修）
+
+| 位置 | 问题 | 修复 |
+|---|---|---|
+| 引擎 index.html 落地页兜底渐变 | 写死日落色（#2e3d5c→#e8b48c），全主题共用 | 新增 `effects.fallback` 配方，按主题注入 |
+| 引擎 index.html 点按闪色 | 写死浅蓝（#a1c4fd→#c2e9fb） | 从 `primary` 自动派生（30%/60% 透明度） |
+| bake_title.py 标题/tagline 投影色 | 写死暗蓝 (30,45,70)，琥珀/粉主题下偏色 | 从描边色派生同色相深色（22% 亮度），`--shadow` 可覆盖 |
+| sheen 扫光角度 | 写死 115deg | 新增可选 `sheen.angle` 字段 |
+
+### 新增硬规则（SKILL.md 第 6 条）
+
+视觉参数零硬编码：玩家可见的一切参数必须来自 GDD/theme.json 配方注入或派生；
+定死的只有结构骨架（SCSS 结构类、占位符机制、布局系统）——骨架是安全网，参数是自由度。
+
+### 审计确认无需改的部分
+
+- gen_particles 形状族（花瓣/雨/光尘/雪/雾）：类型语义，颜色/数量/时长已配方化
+- SCSS 结构类与布局：骨架铁律保护对象，刻意定死防 agent 从零写 UI 翻车
+
+### 验证
+
+- 4 个 build 重应用：midnight 闪色=#E8A33D 派生、兜底=深夜蓝渐变，占位符全清零
+- case1 封面用派生投影色重烘焙（暗琥珀投影替换暗蓝），观感一致
+
+## 2026-07-18 · 验收蒸馏版 v2（动效配方化）
+
+用户复查发现：所有游戏的标题扫光（titleSheen）完全一致，且治愈系主题不该有扫光——
+根因是动态封面三层动效里只有粒子层有配方机制，扫光与 Ken Burns 是 anime 骨架
+写死参数全局照抄。本轮把动效全面配方化。
+
+### 新增
+
+- **theme.json `effects` 动效配方**：`sheen`（开关/色调/峰值/时长）+ `kenburns`
+  （时长/缩放区间）。判据写入 build.md：扫光是否服务情绪，不服务就关——
+  warmwood/noir 已默认关闭扫光，midnight 改琥珀低峰微光（240,200,120 @ 0.14）
+- **双端占位符注入**：引擎 index.html 落地页与各主题 userStyleSheet.css 的
+  扫光/推拉参数全部占位符化（`__SHEEN_*`/`__KB_*`），apply_theme 从 theme.json
+  注入并校验零残留；旧 theme.json 无 effects 块时按旧行为缺省
+
+### 验证
+
+- 4 个 build 重应用主题：midnight=琥珀扫光 14s + 推拉 16s，warmwood=无扫光 +
+  推拉 16s/103→112%，落地文件占位符全清零
+- 截图对比确认：《雨停之前》不再有扫光，《第三小时》为琥珀微光
+
+## 2026-07-18 · 验收蒸馏版（基于 4 case 实战验收）
+
+本轮改动全部来自 5 个测试 case（4 个实跑：《雨停之前》《同一场雨》《第三小时》×2）的
+真实踩坑记录，目标是让接入本 skill 的 coding agent 照文档即可 0→1 产出成品。
+
+### 新增
+
+- **`scripts/assemble_build.sh`** — 一键装配：清 build → 引擎基座 → 内容覆盖 →
+  主题 → config 补丁 → 五项自检（语言补丁/占位符/封面/模板/config），失败非零退出
+- **`scripts/trim_asset.py`** — 资产后处理统一入口：水印裁剪（按图高等比，4K 基准
+  130px）、格式转换、封面瘦身。批量：`trim_asset.py assets_raw/*.png --out-dir game/background`
+- **`assets/themes/midnight/`** — 新主题：深夜琥珀（#E8A33D + motes 光点），
+  适配深夜/治愈/燃/成长题材
+- **粒子配方 marker 机制** — `background/.title_particles.recipe` 记录
+  type:color:count，`apply_theme.sh` 据此判断重生成；`--keep-particles` 保留自定义 tile
+
+### 修复（脚本）
+
+| 问题 | 修复 |
+|---|---|
+| apply_theme 文档写 `<id>/build`，脚本却要 `<id>/build/game` | 脚本自动识别两种传法 |
+| GNU `sed -i` 在 macOS 报 undefined label，占位符静默残留 | 全脚本换 perl 就地替换；占位符残留时**报错退出** |
+| init_project 预建 build/ 导致 `cp -r` 嵌套成 build/engine | assemble_build.sh 先 `rm -rf build` |
+| **所有游戏标题粒子都是同一张引擎默认花瓣图** | marker 配方比对，配方不符即重生成（本轮核心 bug） |
+| React 封面层粒子时长与 theme.json 不一致 | apply_theme 同步 sed userStyleSheet.css 的 particleFall 时长 |
+| `gen_image.py --out x.jpg` 实际落 .png，装配 404 | 按 --out 扩展名落盘，格式不符自动 PIL 转换 |
+| agent_gw 424 限流短退避无效 | 识别 424/429 自动退避 30s+ |
+| 深色发/衣角色抠绿后绿边严重 | gen_image 内置 despill（`--no-despill` 可关） |
+| validate_script 对 `*_retry` 回溯分支误报无立绘变化 | retry 分支免报（纯 setVar+jumpLabel 的剧本级模式） |
+| 结局返回标题页露出灰色色块（封面 1MB 解码 1s+） | bake_title 内置瘦身：1440 宽 + progressive JPEG（→~330KB） |
+| 引擎 404 噪音（缺失字体、Live2D SDK） | 删失效 @font-face；Live2D 改 `__WEBGAL_ENABLE_LIVE2D__` 按需加载 |
+
+### 修复（文档策略化）
+
+- `SKILL.md`：装配统一走 assemble_build.sh；主题清单补全
+- `build.md`：装配流程脚本化；新增「已知瞬态与噪音」判读标准（返回标题 2s 规则、
+  404 白名单）；粒子系统补 marker 机制说明
+- `art-director.md`：限流纪律（串行 + sleep 10-20s）；trim_asset 统一入库；
+  下载资产 `file` 验证防 JSON 错误页；封面瘦身原理
+- `qa.md`：新增第 8 条「返回标题页复检」；环境注意事项补 404 白名单与 macOS sed 坑
+
+### 验证
+
+- case1《第三小时》用修改后 skill 从零复跑：装配自检一次过、E2E first/last 双路线
+  PASS、返回标题页灰块消失、资源警告 4→1
+- 四个 build 粒子全部按主题重生成（midnight motes #F0C878×40 / warmwood motes
+  #E8C890×30），md5 互不相同且异于引擎默认
+- 全部修改脚本通过 py_compile / sh -n 冒烟检查

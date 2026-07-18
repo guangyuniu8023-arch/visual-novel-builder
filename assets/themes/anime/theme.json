@@ -1,0 +1,31 @@
+{
+  "name": "anime",
+  "mood": "恋爱/二次元/治愈",
+  "primary": "#FF6B9D",
+  "text": "#FFFFFF",
+  "particle": {
+    "type": "petals",
+    "color": "#FFC8D7",
+    "count": 26,
+    "duration": "13s"
+  },
+  "cover": {
+    "stroke": "#FF6B9D",
+    "prompt_mood": "warm golden hour, soft light, gentle atmosphere"
+  },
+  "hud": "柔和圆角对话框 + 粉色系按钮",
+  "effects": {
+    "sheen": {
+      "enabled": true,
+      "tint": "255,255,255",
+      "peak": 0.3,
+      "duration": "9s"
+    },
+    "kenburns": {
+      "duration": "14s",
+      "zoomFrom": "104%",
+      "zoomTo": "117%"
+    },
+    "fallback": "linear-gradient(180deg, #FFD6E0 0%, #FFF0F3 100%)"
+  }
+}

@@ -1,0 +1,20 @@
+/* 竖屏乙游基座 · 全局微调（二次元） */
+
+[class*="_singleButton_"] {
+  transform: scale(0.82);
+  opacity: 0.55;
+  transition: opacity 0.3s, transform 0.3s;
+}
+[class*="_singleButton_"]:hover {
+  opacity: 1;
+  transform: scale(0.9);
+}
+
+body {
+  background-color: #140b12;
+}
+
+/* 对话框底板不透明度拉满（压过用户档位设置，保证皮肤观感） */
+div:has(+ #textBoxMain) {
+  opacity: 1 !important;
+}
