@@ -98,12 +98,25 @@ GDD 选项库里的「仅 BGM / BGM + 关键句配音 / 无」决定了本节要
 
 ## 8. 结局达成卡：CG 双帧 + 结算 MP4 合成（剧本用法见 scriptwriter.md「结局达成卡」节）
 
-每个结局一段结算播片 = **2 帧 CG 合成 1 段 MP4**：
+每个结局一段结算短片，资产四件：
 
 1. **帧 1（无字场帧，`cg_card_<结局>a.jpg`）**：情绪前调的画面，无文字（圆满=晨光将亮、坏结局=光线抽离前）
-2. **帧 2（卡面帧，`cg_card_<结局>.jpg`）**：同构图光线推进 + **烘焙标题**（结局名 + `ENDING x/N`）。用 `--ref 帧1` 保构图
+2. **帧 2（卡面帧，`cg_card_<结局>.jpg`）**：同构图光线推进 + **烘焙标题（只有结局名，不要编号/英文小字行）**。用 `--ref 帧1` 保构图
 3. **字幕帧（`cg_card_<结局>_sub.jpg`）**：帧 2 的副本，PIL 把**判词**烧进底部（STHeiti 56px 白字黑描边，居中 y≈H-430）——不用 ffmpeg drawtext（多数 ffmpeg 构建无 libfreetype）
-4. **结算 MP4（`game/video/card_<结局>.mp4`）**：ffmpeg 合成（见下配方）
+4. **角色出镜镜（`cg_role_<结局>.jpg`）**：**结算片必须至少 1 镜有角色**（用户验收："要成为单独的作品，至少要有角色图出现"）。优先复用现有立绘合成，零生图成本：
+
+```python
+# PIL 立绘合成：场景背景 + 角色立绘（透明底 PNG）底对齐居中
+im = Image.open(bg).convert("RGB")            # 1440×2560 场景
+fg = Image.open(figure).convert("RGBA")       # 立绘
+fh = int(im.height * 0.76)                    # 立绘高≈画面 76%
+fg = fg.resize((int(fg.width * fh / fg.height), fh), Image.LANCZOS)
+im.paste(fg, ((im.width - fg.width)//2, im.height - fh), fg)
+```
+
+角色选态与结局情绪一致（圆满=微笑/温和差分、坏结局=低落差分）；场景选剧情核心地。**合成镜同样要逐张目检**（立绘边缘、比例、与场景光源方向是否打架）。
+
+**结算 MP4（`game/video/card_<结局>.mp4`）**：ffmpeg 合成（见下配方）
 
 **烘焙文字校对**（与封面同流程）：VLM 逐字核对。**已知易错点：英文大写串（"ENDING" 的 E 常被画成 ⊂、"/" 画成 ∕）**——英文错 2 次不硬抽，直接 PIL 修复：逐行采样周围底色覆盖错字区（保渐变）+ PIL 重排文字（字间加窄空格模拟 letterspacing）；中文结局名错 3 次才降级 bake_title 全流程。帧 1 也要过 `file` 验证与尺寸规范（1440×2560）。
 
@@ -133,7 +146,7 @@ ffmpeg -y \
 - **xfade offset 公式（血泪教训）**：第 n 个转场的 offset = 前 n 镜时长之和 − n×转场时长。算错（offset ≥ 前流时长）xfade 会**静默丢弃后续所有镜头**（总时长对不上先查 offset）
 - 总时长 = 各镜时长之和 − 转场数×转场时长；`-shortest` 以短者为准
 - 运镜参数（zoompan）：推近 `z='min(1.0+on*0.001,1.20)'`；平移 `z='1.10':x='iw/2-(iw/zoom/2)+on*0.5'`；拉远 `z='max(1.20-on*0.001,1.0)'`；片头/片尾卡 `z='min(1.0+on*0.0006,1.05)'` 微推
-- **片头/片尾卡**：PIL 制（近黑底 #0C0A08 + 烫金宋体结局名 / 作品名+ENDING x/N+tagline），是"独立作品感"的关键件
+- **片头/片尾卡**：PIL 制（近黑底 #0C0A08 + 烫金宋体结局名 / 作品名+tagline；**不要 ENDING x/N 编号**），是"独立作品感"的关键件
 - **BGM**：免版税库（Kevin MacLeod / incompetech、Free Music Archive——FMA 有稳定直链 `files.freemusicarchive.org/...`），CC-BY 必须署名并写进 GDD 音频节；混音 volume 0.7-0.8、首尾 afade 淡出；后续接生成式音乐 API 时同槽位替换
 - 片长 15-20s（game 内播片约束）；后续接视频生成模型（图生视频）时，逐镜替换 zoompan 段为 AI 片段，转场/字幕/混音管线不变
 
