@@ -131,7 +131,7 @@ url = client.upload_storage(file="projects/<id>/character/<角色>_ref.png").sig
 python3 scripts/gen_video.py --prompt-file projects/<id>/storyboards/<结局>.txt   --ref projects/<id>/character/<角色>_ref.png   --out projects/<id>/game/video/card_<结局>.mp4   --ratio 9:16 --duration 15 --resolution 480p
 ```
 
-- 模型/端点在 `tools/providers.yaml` 的 `video` 段；**API key 走环境变量 `ARK_API_KEY`，禁止写进脚本/文档/仓库**
+- 视频生成 **provider 可插拔**（与 gen_image.py 同款模式）：`tools/providers.yaml` 的 `video.provider` 指定，当前默认 `seedance`（火山方舟异步任务 API），预留 `openai_compat`；新增 provider = `gen_video.py` 的 `PROVIDERS` 注册表加适配器（build_payload/create/poll_once/is_done 四钩子）+ yaml 同名段；**API key 走各 provider 的 `api_key_env` 环境变量，禁止写进脚本/文档/仓库**
 - 默认 `generate_audio: true`（模型自带环境音轨；判词/结局名不在音轨里，AI 语音暂不用）
 - 脚本行为：上传参考图 → 建任务 → 轮询（15s 间隔，超时 10 分钟）→ 下载校验（`file` 为真 MP4 + `ffprobe` 时长）
 - prompt 存 `storyboards/<结局>.txt` 落档（可复现；跑偏了改它重跑，**不改分镜表**）

@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
-"""gen_video.py — 结局结算短片生成（Seedance / 火山方舟视频生成）
+"""gen_video.py — 结局结算短片生成（视频生成 provider 可插拔）
 
 用法:
   python3 gen_video.py --prompt-file <分镜prompt.txt> --ref <角色主题图> --out <输出.mp4>
-      [--ratio 9:16] [--duration 15] [--resolution 480p] [--no-audio]
+      [--ratio 9:16] [--duration 15] [--resolution 480p] [--no-audio] [--timeout 600]
 
-流程: 上传参考图（agent_gw upload_storage → 公网 URL）→ 建任务 → 轮询 →
-      下载并校验（真 MP4 + ffprobe 时长）。
+流程: 上传参考图（agent_gw upload_storage → 公网 URL）→ provider 建任务 →
+      轮询 → 下载并校验（真 MP4 + ffprobe 时长）。
 
-配置: tools/providers.yaml 的 video 段（model/endpoint/api_key_env）。
-      **API key 走环境变量（默认 ARK_API_KEY），禁止写进脚本或仓库。**
+provider 配置: tools/providers.yaml 的 video 段（与 gen_image.py 同款插拔模式）：
+  video:
+    provider: seedance        # 当前默认（火山方舟 Seedance 异步任务 API）
+    seedance:
+      model: doubao-seedance-2-0-fast-260128
+      endpoint: https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks
+      api_key_env: ARK_API_KEY
+    # openai_compat:          # 预留：任意 OpenAI 兼容视频 API
+    #   model/endpoint/api_key_env
+
+**API key 一律走环境变量（各 provider 的 api_key_env），禁止写进脚本或仓库。**
+
+新增 provider 的方法：在下方 PROVIDERS 注册表加一个适配器（实现
+build_payload / parse_task / is_done / get_video_url 四个钩子），
+并在 providers.yaml 配同名段。
 """
 import argparse
 import json
@@ -18,34 +31,43 @@ import subprocess
 import sys
 import time
 import urllib.request
-import urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+# ---------- 配置解析（简单解析，避免依赖 pyyaml） ----------
+
 def load_video_config():
-    """读 tools/providers.yaml 的 video 段（简单解析，避免依赖 pyyaml）。"""
-    cfg = {
-        "model": "doubao-seedance-2-0-fast-260128",
-        "endpoint": "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks",
-        "api_key_env": "ARK_API_KEY",
-    }
+    """读 tools/providers.yaml 的 video 段 → {provider: str, <provider名>: {k: v}}。"""
+    cfg = {"provider": "seedance"}
     path = os.path.join(HERE, "..", "tools", "providers.yaml")
     if not os.path.exists(path):
         return cfg
     in_video = False
+    current = None
     for raw in open(path, encoding="utf-8"):
         line = raw.rstrip()
         if line.strip().startswith("#"):
             continue
-        if not line.startswith(" ") and line.rstrip().endswith(":"):
-            in_video = line.strip() == "video:"
+        indent = len(line) - len(line.lstrip())
+        if indent == 0:
+            key = line.strip()
+            in_video = key == "video:"
+            current = None
             continue
-        if in_video and ":" in line:
-            k, _, v = line.strip().partition(":")
-            v = v.strip()
-            if k in cfg and v:
+        if not in_video or ":" not in line:
+            continue
+        k, _, v = line.strip().partition(":")
+        v = v.strip()
+        if indent == 2:
+            if v == "":
+                current = k
+                cfg.setdefault(current, {})
+            else:
                 cfg[k] = v
+                current = None
+        elif indent >= 4 and current:
+            cfg[current][k] = v
     return cfg
 
 
@@ -67,14 +89,65 @@ def api(endpoint, key, method="GET", payload=None):
         endpoint,
         data=json.dumps(payload).encode() if payload else None,
         method=method,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {key}",
-        },
+        headers={"Content-Type": "application/json",
+                 "Authorization": f"Bearer {key}"},
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode())
 
+
+# ---------- provider 适配器 ----------
+
+class SeedanceAdapter:
+    """火山方舟 Seedance：POST 建任务 → GET 轮询 → content.video_url。"""
+
+    def __init__(self, cfg):
+        self.model = cfg.get("model", "doubao-seedance-2-0-fast-260128")
+        self.endpoint = cfg.get(
+            "endpoint",
+            "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks")
+        self.key_env = cfg.get("api_key_env", "ARK_API_KEY")
+
+    def build_payload(self, prompt, ref_url, args):
+        return {
+            "model": self.model,
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url",
+                 "image_url": {"url": ref_url}, "role": "reference_image"},
+            ],
+            "generate_audio": not args.no_audio,
+            "ratio": args.ratio,
+            "duration": args.duration,
+            "resolution": args.resolution,
+            "watermark": False,
+        }
+
+    def create(self, key, payload):
+        task = api(self.endpoint, key, "POST", payload)
+        task_id = task.get("id")
+        if not task_id:
+            raise RuntimeError(f"建任务失败: {task}")
+        return task_id
+
+    def poll_once(self, key, task_id):
+        return api(f"{self.endpoint}/{task_id}", key)
+
+    @staticmethod
+    def is_done(status_resp):
+        s = status_resp.get("status")
+        if s == "succeeded":
+            return (status_resp.get("content") or {}).get("video_url")
+        if s == "failed":
+            raise RuntimeError(
+                f"任务失败: {json.dumps(status_resp, ensure_ascii=False)[:500]}")
+        return None
+
+
+PROVIDERS = {"seedance": SeedanceAdapter}
+
+
+# ---------- 主流程 ----------
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -97,46 +170,41 @@ def main() -> int:
         return 1
 
     cfg = load_video_config()
-    key = os.environ.get(cfg["api_key_env"], "")
+    provider = cfg.get("provider", "seedance")
+    if provider not in PROVIDERS:
+        print(f"ERROR: 未实现的 video provider: {provider}（已注册: {list(PROVIDERS)}）")
+        return 1
+    adapter = PROVIDERS[provider](cfg.get(provider, {}))
+
+    key = os.environ.get(adapter.key_env, "")
     if not key:
-        print(f"ERROR: 环境变量 {cfg['api_key_env']} 未设置（API key 禁止写进仓库，用 env 注入）")
+        print(f"ERROR: 环境变量 {adapter.key_env} 未设置（API key 禁止写进仓库，用 env 注入）")
         return 1
 
+    print(f"provider={provider} model={adapter.model}")
     print("上传参考图…")
     ref_url = upload_ref(args.ref)
-    payload = {
-        "model": cfg["model"],
-        "content": [
-            {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": ref_url}, "role": "reference_image"},
-        ],
-        "generate_audio": not args.no_audio,
-        "ratio": args.ratio,
-        "duration": args.duration,
-        "resolution": args.resolution,
-        "watermark": False,
-    }
     print("创建任务…")
-    task = api(cfg["endpoint"], key, "POST", payload)
-    task_id = task.get("id")
-    if not task_id:
-        print(f"ERROR: 建任务失败: {task}")
+    try:
+        task_id = adapter.create(key, adapter.build_payload(prompt, ref_url, args))
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
         return 1
     print(f"任务 {task_id}，轮询中…")
 
     deadline = time.time() + args.timeout
     video_url = None
-    while time.time() < deadline:
-        time.sleep(15)
-        st = api(f"{cfg['endpoint']}/{task_id}", key)
-        status = st.get("status")
-        print(f"  {status}")
-        if status == "succeeded":
-            video_url = (st.get("content") or {}).get("video_url")
-            break
-        if status == "failed":
-            print(f"ERROR: 任务失败: {json.dumps(st, ensure_ascii=False)[:500]}")
-            return 1
+    try:
+        while time.time() < deadline:
+            time.sleep(15)
+            resp = adapter.poll_once(key, task_id)
+            print(f"  {resp.get('status', '?')}")
+            video_url = adapter.is_done(resp)
+            if video_url:
+                break
+    except RuntimeError as e:
+        print(f"ERROR: {e}")
+        return 1
     if not video_url:
         print("ERROR: 轮询超时")
         return 1
