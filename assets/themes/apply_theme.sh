@@ -20,12 +20,20 @@ cp "$SRC/template/Stage/Choose/choose.scss"   "$DST/template/Stage/Choose/choose
 cp "$SRC/template/UI/Title/title.scss"        "$DST/template/UI/Title/title.scss"
 cp "$SRC/userStyleSheet.css"                  "$DST/userStyleSheet.css"
 
-# 粒子 tile 存在性检查：tile 是项目主题素材（agent 按主题推导后用
+# 粒子 tile 检查：tile 是项目主题素材（agent 按主题推导后用
 # gen_particles.py 自由参数绘制 / gen_image.py 生成 / 自行创作），
-# apply_theme 不再按枚举配方代生成——素材从零，脚本只把关存在性
+# apply_theme 不再按枚举配方代生成——素材从零，脚本只把关存在性与原创性。
+# 教训（v8.3）：引擎曾内置默认 tile，存在性检查被默认件满足而静默放行，
+# 4 个项目标题粒子全是同一批光斑。默认件已删，且 md5 撞默认件同样报错。
 if [ ! -f "$DST/background/title_particles.png" ]; then
   echo "ERROR: 缺少 $DST/background/title_particles.png" >&2
   echo "  粒子 tile 需按主题推导后自行提供（tools: gen_particles.py / gen_image.py）" >&2
+  exit 1
+fi
+TILE_MD5=$(md5 -q "$DST/background/title_particles.png" 2>/dev/null || md5sum "$DST/background/title_particles.png" | cut -d' ' -f1)
+if [ "$TILE_MD5" = "a5d1b2a8a2502a03d51c100e210076ea" ]; then
+  echo "ERROR: title_particles.png 与引擎旧默认光斑 tile 完全相同（md5 碰撞）" >&2
+  echo "  粒子 tile 必须由本项目按主题推导自产，禁止沿用默认件" >&2
   exit 1
 fi
 
