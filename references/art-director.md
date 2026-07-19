@@ -107,20 +107,34 @@ GDD 选项库里的「仅 BGM / BGM + 关键句配音 / 无」决定了本节要
 
 **烘焙文字校对**（与封面同流程）：VLM 逐字核对。**已知易错点：英文大写串（"ENDING" 的 E 常被画成 ⊂、"/" 画成 ∕）**——英文错 2 次不硬抽，直接 PIL 修复：逐行采样周围底色覆盖错字区（保渐变）+ PIL 重排文字（字间加窄空格模拟 letterspacing）；中文结局名错 3 次才降级 bake_title 全流程。帧 1 也要过 `file` 验证与尺寸规范（1440×2560）。
 
-**ffmpeg 结算片配方**（~6s，1440×2560@30，无音轨）：
+**ffmpeg 多镜合成（分镜短片，总时长 15-20s，含 BGM）**：
 
 ```bash
-# 圆满=推近（zoom 1.0→1.20 全程加速感）
-ffmpeg -y -loop 1 -framerate 30 -t 2.2 -i <帧1>.jpg -loop 1 -framerate 30 -t 4.5 -i <字幕帧>.jpg \
-  -filter_complex "[0:v]zoompan=z='min(1.0+on*0.0012,1.08)':d=1:s=1440x2560:fps=30[v0];\
-[1:v]zoompan=z='min(1.08+on*0.0009,1.20)':d=1:s=1440x2560:fps=30[v1];\
-[v0][v1]xfade=transition=fade:duration=1.0:offset=1.7[out]" \
-  -map "[out]" -c:v libx264 -pix_fmt yuv420p -crf 21 -movflags +faststart -an game/video/card_<结局>.mp4
-
-# 普通=平移（恒定 1.08 倍，x 轴缓移）：zoompan=z='1.08':x='iw/2-(iw/zoom/2)+on*0.5':y='ih/2-(ih/zoom/2)'
-# 坏结局=拉远：z 从 1.20 递减到 1.0（z='max(1.20-on*0.001,1.0)'）+ PIL 预处理降饱和
+ffmpeg -y \
+  -loop 1 -framerate 30 -t 2.2 -i <片头卡>.jpg \
+  -loop 1 -framerate 30 -t 4.0 -i <镜1>.jpg \
+  -loop 1 -framerate 30 -t 4.0 -i <镜2>.jpg \
+  -loop 1 -framerate 30 -t 3.2 -i <镜3帧a>.jpg \
+  -loop 1 -framerate 30 -t 4.5 -i <镜3字幕帧>.jpg \
+  -loop 1 -framerate 30 -t 3.0 -i <片尾卡>.jpg \
+  -i <bgm>.mp3 \
+  -filter_complex "[0:v]zoompan=...[v0];[1:v]zoompan=...[v1];[2:v]zoompan=...[v2];\
+[3:v]zoompan=...[v3];[4:v]zoompan=...[v4];[5:v]zoompan=...[v5];\
+[v0][v1]xfade=transition=fade:duration=0.8:offset=1.4[x1];\
+[x1][v2]xfade=transition=fade:duration=0.8:offset=4.6[x2];\
+[x2][v3]xfade=transition=fade:duration=0.8:offset=7.8[x3];\
+[x3][v4]xfade=transition=fade:duration=0.8:offset=10.2[x4];\
+[x4][v5]xfade=transition=fade:duration=0.8:offset=13.9[out];\
+[6:a]atrim=0:<总时长>,afade=t=in:st=0:d=1.5,afade=t=out:st=<总时长-2>:d=2.0,volume=0.8[a]" \
+  -map "[out]" -map "[a]" -c:v libx264 -pix_fmt yuv420p -crf 21 -movflags +faststart \
+  -c:a aac -b:a 128k -shortest game/video/card_<结局>.mp4
 ```
 
-参数推导与主题配方同链：片长 6-8s（情绪越沉越长）、推近幅度圆满 1.20/普通 1.08/坏结局拉远、xfade 1.0s。后续接视频生成模型（Track B）时，MP4 槽位不变——`playVideo` 行不动，只替换视频文件来源。
+- **xfade offset 公式（血泪教训）**：第 n 个转场的 offset = 前 n 镜时长之和 − n×转场时长。算错（offset ≥ 前流时长）xfade 会**静默丢弃后续所有镜头**（总时长对不上先查 offset）
+- 总时长 = 各镜时长之和 − 转场数×转场时长；`-shortest` 以短者为准
+- 运镜参数（zoompan）：推近 `z='min(1.0+on*0.001,1.20)'`；平移 `z='1.10':x='iw/2-(iw/zoom/2)+on*0.5'`；拉远 `z='max(1.20-on*0.001,1.0)'`；片头/片尾卡 `z='min(1.0+on*0.0006,1.05)'` 微推
+- **片头/片尾卡**：PIL 制（近黑底 #0C0A08 + 烫金宋体结局名 / 作品名+ENDING x/N+tagline），是"独立作品感"的关键件
+- **BGM**：免版税库（Kevin MacLeod / incompetech、Free Music Archive——FMA 有稳定直链 `files.freemusicarchive.org/...`），CC-BY 必须署名并写进 GDD 音频节；混音 volume 0.7-0.8、首尾 afade 淡出；后续接生成式音乐 API 时同槽位替换
+- 片长 15-20s（game 内播片约束）；后续接视频生成模型（图生视频）时，逐镜替换 zoompan 段为 AI 片段，转场/字幕/混音管线不变
 
 - 卡面 CG 进 `game/background/`，结算 MP4 进 `game/video/`，都进资产清单
