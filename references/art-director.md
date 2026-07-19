@@ -96,16 +96,31 @@ GDD 选项库里的「仅 BGM / BGM + 关键句配音 / 无」决定了本节要
 - **禁止虚构音频 URL**（剧本里写外链 mp3 会在装配后静默无声）；音频必须是 build/game 内的本地文件
 - 情绪匹配：BGM 选择与主题配方同一条推导链（治愈=钢琴/环境雨声、悬疑=低频氛围、燃=节奏型），在 manifest.json 对应条目注明选曲理由
 
-## 8. 结局达成卡 CG（每结局 2 帧，剧本用法见 scriptwriter.md「结局达成卡」节）
+## 8. 结局达成卡：CG 双帧 + 结算 MP4 合成（剧本用法见 scriptwriter.md「结局达成卡」节）
 
-每个结局一张达成卡 = **2 帧 CG**（双帧交叉淡入制造"准动画"，不依赖引擎动画）：
+每个结局一段结算播片 = **2 帧 CG 合成 1 段 MP4**：
 
 1. **帧 1（无字场帧，`cg_card_<结局>a.jpg`）**：情绪前调的画面，无文字（圆满=晨光将亮、坏结局=光线抽离前）
-2. **帧 2（卡面帧，`cg_card_<结局>.jpg`）**：同构图光线推进（镜头语言：圆满推近转暖/坏结局拉远降饱和/普通平移低对比）+ **烘焙标题**（结局名 + `ENDING x/N`）。用 `--ref 帧1` 保构图
+2. **帧 2（卡面帧，`cg_card_<结局>.jpg`）**：同构图光线推进 + **烘焙标题**（结局名 + `ENDING x/N`）。用 `--ref 帧1` 保构图
+3. **字幕帧（`cg_card_<结局>_sub.jpg`）**：帧 2 的副本，PIL 把**判词**烧进底部（STHeiti 56px 白字黑描边，居中 y≈H-430）——不用 ffmpeg drawtext（多数 ffmpeg 构建无 libfreetype）
+4. **结算 MP4（`game/video/card_<结局>.mp4`）**：ffmpeg 合成（见下配方）
 
-规则：
+**烘焙文字校对**（与封面同流程）：VLM 逐字核对。**已知易错点：英文大写串（"ENDING" 的 E 常被画成 ⊂、"/" 画成 ∕）**——英文错 2 次不硬抽，直接 PIL 修复：逐行采样周围底色覆盖错字区（保渐变）+ PIL 重排文字（字间加窄空格模拟 letterspacing）；中文结局名错 3 次才降级 bake_title 全流程。帧 1 也要过 `file` 验证与尺寸规范（1440×2560）。
 
-- **烘焙文字校对**（与封面同流程）：VLM 逐字核对。**已知易错点：英文大写串（"ENDING" 的 E 常被画成 ⊂、"/" 画成 ∕）**——英文错 2 次不硬抽，直接 PIL 修复：逐行采样周围底色覆盖错字区（保渐变）+ PIL 重排文字（字间加窄空格模拟 letterspacing）；中文结局名错 3 次才降级 bake_title 全流程
-- 帧 1 也要过 `file` 验证与尺寸规范（1440×2560）
-- 判词**不烘焙**（走剧本旁白，避免卡面文字过多；且旁白有 HUD 弱化样式兜底）
-- 卡面 CG 进 `game/background/`，文件名 `cg_card_<结局标识>.jpg` 进资产清单
+**ffmpeg 结算片配方**（~6s，1440×2560@30，无音轨）：
+
+```bash
+# 圆满=推近（zoom 1.0→1.20 全程加速感）
+ffmpeg -y -loop 1 -framerate 30 -t 2.2 -i <帧1>.jpg -loop 1 -framerate 30 -t 4.5 -i <字幕帧>.jpg \
+  -filter_complex "[0:v]zoompan=z='min(1.0+on*0.0012,1.08)':d=1:s=1440x2560:fps=30[v0];\
+[1:v]zoompan=z='min(1.08+on*0.0009,1.20)':d=1:s=1440x2560:fps=30[v1];\
+[v0][v1]xfade=transition=fade:duration=1.0:offset=1.7[out]" \
+  -map "[out]" -c:v libx264 -pix_fmt yuv420p -crf 21 -movflags +faststart -an game/video/card_<结局>.mp4
+
+# 普通=平移（恒定 1.08 倍，x 轴缓移）：zoompan=z='1.08':x='iw/2-(iw/zoom/2)+on*0.5':y='ih/2-(ih/zoom/2)'
+# 坏结局=拉远：z 从 1.20 递减到 1.0（z='max(1.20-on*0.001,1.0)'）+ PIL 预处理降饱和
+```
+
+参数推导与主题配方同链：片长 6-8s（情绪越沉越长）、推近幅度圆满 1.20/普通 1.08/坏结局拉远、xfade 1.0s。后续接视频生成模型（Track B）时，MP4 槽位不变——`playVideo` 行不动，只替换视频文件来源。
+
+- 卡面 CG 进 `game/background/`，结算 MP4 进 `game/video/`，都进资产清单
