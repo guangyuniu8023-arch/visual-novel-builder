@@ -96,58 +96,56 @@ GDD 选项库里的「仅 BGM / BGM + 关键句配音 / 无」决定了本节要
 - **禁止虚构音频 URL**（剧本里写外链 mp3 会在装配后静默无声）；音频必须是 build/game 内的本地文件
 - 情绪匹配：BGM 选择与主题配方同一条推导链（治愈=钢琴/环境雨声、悬疑=低频氛围、燃=节奏型），在 manifest.json 对应条目注明选曲理由
 
-## 8. 结局达成卡：CG 双帧 + 结算 MP4 合成（剧本用法见 scriptwriter.md「结局达成卡」节）
+## 8. 结局结算短片：Seedance 视频生成（分镜表用法见 scriptwriter.md「结局达成卡」节）
 
-每个结局一段结算短片，资产四件：
+每个结局一段 15-20s 结算短片。**标准路径 = 视频生成模型（Seedance）直出**；模型不可用时降级 ffmpeg 多镜合成（见本节末）。
 
-1. **帧 1（无字场帧，`cg_card_<结局>a.jpg`）**：情绪前调的画面，无文字（圆满=晨光将亮、坏结局=光线抽离前）
-2. **帧 2（卡面帧，`cg_card_<结局>.jpg`）**：同构图光线推进 + **烘焙标题（只有结局名，不要编号/英文小字行）**。用 `--ref 帧1` 保构图
-3. **字幕帧（`cg_card_<结局>_sub.jpg`）**：帧 2 的副本，PIL 把**判词**烧进底部（STHeiti 56px 白字黑描边，居中 y≈H-430）——不用 ffmpeg drawtext（多数 ffmpeg 构建无 libfreetype）
-4. **角色出镜镜（`cg_role_<结局>.jpg`）**：**结算片必须至少 1 镜有角色**（用户验收："要成为单独的作品，至少要有角色图出现"）。优先复用现有立绘合成，零生图成本：
+### 8.1 参考素材（只传 1 张角色主题图）
+
+用户拍板："不用那么多图片，文字描述+上传角色主题图就可以"。参考素材 = **角色主题图 1 张**（用户上传的原图 `character/<角色>_ref.png`，不用立绘/场景图）：
 
 ```python
-# PIL 立绘合成：场景背景 + 角色立绘（透明底 PNG）底对齐居中
-im = Image.open(bg).convert("RGB")            # 1440×2560 场景
-fg = Image.open(figure).convert("RGBA")       # 立绘
-fh = int(im.height * 0.76)                    # 立绘高≈画面 76%
-fg = fg.resize((int(fg.width * fh / fg.height), fh), Image.LANCZOS)
-im.paste(fg, ((im.width - fg.width)//2, im.height - fh), fg)
+# 本地图 → 公网 URL（复用 gen_image.py 的 agent_gw 通道）
+from agent_gw import AgentGwClient
+client = AgentGwClient()
+url = client.upload_storage(file="projects/<id>/character/<角色>_ref.png").signed_url
 ```
 
-角色选态与结局情绪一致（圆满=微笑/温和差分、坏结局=低落差分）；场景选剧情核心地。**合成镜同样要逐张目检**（立绘边缘、比例、与场景光源方向是否打架）。
+### 8.2 prompt 组装规则（四段式——按规则组装，不靠自由发挥）
 
-**结算 MP4（`game/video/card_<结局>.mp4`）**：ffmpeg 合成（见下配方）
+输入是 GDD 结局清单的**分镜表**（用户已批准），输出是喂给模型的单段文本：
 
-**烘焙文字校对**（与封面同流程）：VLM 逐字核对。**已知易错点：英文大写串（"ENDING" 的 E 常被画成 ⊂、"/" 画成 ∕）**——英文错 2 次不硬抽，直接 PIL 修复：逐行采样周围底色覆盖错字区（保渐变）+ PIL 重排文字（字间加窄空格模拟 letterspacing）；中文结局名错 3 次才降级 bake_title 全流程。帧 1 也要过 `file` 验证与尺寸规范（1440×2560）。
+```
+【全局锚点，3 句定生死】<画风>（如"新海诚式动画电影质感"）+ 竖屏构图。<角色形象
+  锚点>：图片1是<角色卡外貌锚点原文摘录——发型/瞳色/标志服装>，全片保持同一形象。
+  情绪：<一句话基调（从结局名/判词提炼）>。
+【分镜时间码】逐镜一句"X-Y秒：<分镜表该镜画面>+<运镜>"，时间码与分镜表一致。
+【禁项，必须显式写】全程无人物对白，无字幕文字。
+```
 
-**ffmpeg 多镜合成（分镜短片，总时长 15-20s，含 BGM）**：
+**不进 prompt 的东西**（硬规则）：结局名、判词、任何要显示的文字（模型渲染文字必翻车——结局名/判词走剧本旁白，见 scriptwriter.md）；BGM（走参数/后期，不写进文本）。
+
+### 8.3 调用（scripts/gen_video.py）
 
 ```bash
-ffmpeg -y \
-  -loop 1 -framerate 30 -t 2.2 -i <片头卡>.jpg \
-  -loop 1 -framerate 30 -t 4.0 -i <镜1>.jpg \
-  -loop 1 -framerate 30 -t 4.0 -i <镜2>.jpg \
-  -loop 1 -framerate 30 -t 3.2 -i <镜3帧a>.jpg \
-  -loop 1 -framerate 30 -t 4.5 -i <镜3字幕帧>.jpg \
-  -loop 1 -framerate 30 -t 3.0 -i <片尾卡>.jpg \
-  -i <bgm>.mp3 \
-  -filter_complex "[0:v]zoompan=...[v0];[1:v]zoompan=...[v1];[2:v]zoompan=...[v2];\
-[3:v]zoompan=...[v3];[4:v]zoompan=...[v4];[5:v]zoompan=...[v5];\
-[v0][v1]xfade=transition=fade:duration=0.8:offset=1.4[x1];\
-[x1][v2]xfade=transition=fade:duration=0.8:offset=4.6[x2];\
-[x2][v3]xfade=transition=fade:duration=0.8:offset=7.8[x3];\
-[x3][v4]xfade=transition=fade:duration=0.8:offset=10.2[x4];\
-[x4][v5]xfade=transition=fade:duration=0.8:offset=13.9[out];\
-[6:a]atrim=0:<总时长>,afade=t=in:st=0:d=1.5,afade=t=out:st=<总时长-2>:d=2.0,volume=0.8[a]" \
-  -map "[out]" -map "[a]" -c:v libx264 -pix_fmt yuv420p -crf 21 -movflags +faststart \
-  -c:a aac -b:a 128k -shortest game/video/card_<结局>.mp4
+python3 scripts/gen_video.py --prompt-file projects/<id>/storyboards/<结局>.txt   --ref projects/<id>/character/<角色>_ref.png   --out projects/<id>/game/video/card_<结局>.mp4   --ratio 9:16 --duration 15 --resolution 480p
 ```
 
-- **xfade offset 公式（血泪教训）**：第 n 个转场的 offset = 前 n 镜时长之和 − n×转场时长。算错（offset ≥ 前流时长）xfade 会**静默丢弃后续所有镜头**（总时长对不上先查 offset）
-- 总时长 = 各镜时长之和 − 转场数×转场时长；`-shortest` 以短者为准
-- 运镜参数（zoompan）：推近 `z='min(1.0+on*0.001,1.20)'`；平移 `z='1.10':x='iw/2-(iw/zoom/2)+on*0.5'`；拉远 `z='max(1.20-on*0.001,1.0)'`；片头/片尾卡 `z='min(1.0+on*0.0006,1.05)'` 微推
-- **片头/片尾卡**：PIL 制（近黑底 #0C0A08 + 烫金宋体结局名 / 作品名+tagline；**不要 ENDING x/N 编号**），是"独立作品感"的关键件
-- **BGM**：免版税库（Kevin MacLeod / incompetech、Free Music Archive——FMA 有稳定直链 `files.freemusicarchive.org/...`），CC-BY 必须署名并写进 GDD 音频节；混音 volume 0.7-0.8、首尾 afade 淡出；后续接生成式音乐 API 时同槽位替换
-- 片长 15-20s（game 内播片约束）；后续接视频生成模型（图生视频）时，逐镜替换 zoompan 段为 AI 片段，转场/字幕/混音管线不变
+- 模型/端点在 `tools/providers.yaml` 的 `video` 段；**API key 走环境变量 `ARK_API_KEY`，禁止写进脚本/文档/仓库**
+- 默认 `generate_audio: true`（模型自带环境音轨；判词/结局名不在音轨里，AI 语音暂不用）
+- 脚本行为：上传参考图 → 建任务 → 轮询（15s 间隔，超时 10 分钟）→ 下载校验（`file` 为真 MP4 + `ffprobe` 时长）
+- prompt 存 `storyboards/<结局>.txt` 落档（可复现；跑偏了改它重跑，**不改分镜表**）
 
-- 卡面 CG 进 `game/background/`，结算 MP4 进 `game/video/`，都进资产清单
+### 8.4 验收（QA 前自检，逐条过）
+
+1. **抽帧对照分镜表**：每镜抽 1 帧（`ffmpeg -ss <时间码中点>`），画面内容与 GDD 分镜表该镜描述一致
+2. **角色一致性**：出镜帧与角色主题图对比——发型/瞳色/标志服装像不像（不像=参考图没生效，重跑）
+3. **无乱码文字**：全片任何帧出现文字/字幕/水印即回炉（禁项没写够）
+4. **时长与规格**：ffprobe 15-20s、9:16、480P
+5. **音轨**：有环境音且与画面氛围不冲突（雨夜画面配鸟鸣=重跑）
+
+### 8.5 降级路径（视频模型不可用时）
+
+回 v9.2 的 ffmpeg 多镜合成：CG 帧 + zoompan 运镜 + xfade 转场 + PIL 片头/片尾卡（配方见 CHANGELOG v9.2/v9.3 与项目 hud_patch 类落档）。降级产物同样要过 8.4 的 1/3/4 条。
+
+- 结算 MP4 进 `game/video/card_<结局>.mp4`，进资产清单
