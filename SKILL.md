@@ -24,7 +24,7 @@ INTAKE → SCRIPT → ASSETS → BUILD → QA → DELIVER
 | QA | references/qa.md | `qa_report/` 截图与结论 | 验收清单全绿，否则按 qa.md 回炉规则返工 |
 | DELIVER | — | 聊天窗口内可玩的 H5（本地预览 URL + `build/` 目录） | QA 通过 |
 
-DELIVER 的交付形态（QA 全绿后）：最终产物是**聊天窗口里直接可玩的 H5**。向用户交付**本地预览**（`python3 -m http.server <端口> -d projects/<id>/build`，报告 URL 与端口，环境支持时给预览卡片链接）+ **build/ 目录本体**（自包含静态站点，用户可自行处置）。**不做公网部署**——交付边界就是窗口内 H5 + build/ 目录。交付时一并报告：游戏名、结局数与达成路径数、QA 结论、已知简化项（见 qa.md 环境注意事项）。
+DELIVER 的交付形态（QA 全绿后）：最终产物是**聊天窗口里直接可玩的 H5**。向用户交付**本地预览**（`python3 -m http.server <端口> -d projects/<id>/build`，报告 URL 与端口，环境支持时给预览卡片链接）+ **build/ 目录本体**（自包含静态站点，用户可自行处置）。默认**不做公网部署**；用户明确要求公网分享时，用 **GitHub Pages**（`gh repo create <id>-game --public --source=build --push` + `gh api repos/<user>/<repo>/pages -X POST -f source[branch]=main -f source[path]=/`，约 1-2 分钟构建后 `https://<user>.github.io/<repo>/` 可玩；仓库公开=任何人可玩，介意则用私有仓库+授权访问）。交付时一并报告：游戏名、结局数与达成路径数、QA 结论、已知简化项（见 qa.md 环境注意事项）。
 
 ## 硬规则
 
