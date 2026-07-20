@@ -24,7 +24,8 @@ import time
 
 
 def load_provider_config():
-    """读取 tools/providers.yaml（简单解析，避免依赖 pyyaml）。"""
+    """读取 tools/providers.yaml 顶层字段（简单解析，避免依赖 pyyaml）。
+    只解析缩进 0 的行——video: 等嵌套段的字段不得覆盖顶层 provider。"""
     cfg = {"provider": "agent_gw"}
     here = os.path.dirname(os.path.abspath(__file__))
     for cand in (os.path.join(here, "..", "tools", "providers.yaml"),
@@ -32,6 +33,8 @@ def load_provider_config():
         if os.path.exists(cand):
             with open(cand, encoding="utf-8") as f:
                 for line in f:
+                    if line != line.lstrip():  # 跳过嵌套段（缩进行）
+                        continue
                     line = line.strip()
                     if line and not line.startswith("#") and ":" in line:
                         k, v = line.split(":", 1)
