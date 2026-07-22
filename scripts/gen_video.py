@@ -5,8 +5,8 @@
   python3 gen_video.py --prompt-file <分镜prompt.txt> --ref <角色主题图> --out <输出.mp4>
       [--ratio 9:16] [--duration 15] [--resolution 480p] [--no-audio] [--timeout 600]
 
-流程: 上传参考图（agent_gw upload_storage → 公网 URL）→ provider 建任务 →
-      轮询 → 下载并校验（真 MP4 + ffprobe 时长）。
+流程: 上传/编码参考图 → Seedance 2.5 建任务 → 轮询 → 下载并校验（真 MP4 +
+      ffprobe 时长）→ 自动更新 manifest 并写 Seedance 任务回执。
 
 provider 配置: tools/providers.yaml 的 video 段（与 gen_image.py 同款插拔模式）：
   video:
@@ -25,12 +25,16 @@ build_payload / parse_task / is_done / get_video_url 四个钩子），
 并在 providers.yaml 配同名段。
 """
 import argparse
+import base64
 import json
+import mimetypes
 import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,8 +44,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 def load_video_config():
     """读 tools/providers.yaml 的 video 段 → {provider: str, <provider名>: {k: v}}。"""
     cfg = {"provider": "seedance"}
-    path = os.path.join(HERE, "..", "tools", "providers.yaml")
-    if not os.path.exists(path):
+    paths = [
+        os.path.join(os.getcwd(), "tools", "providers.yaml"),
+        os.path.join(HERE, "..", "tools", "providers.yaml"),
+    ]
+    path = next((candidate for candidate in paths if os.path.exists(candidate)), None)
+    if path is None:
         return cfg
     in_video = False
     current = None
@@ -73,15 +81,21 @@ def load_video_config():
 
 def upload_ref(local_path: str) -> str:
     """本地参考图 → 公网 URL（agent_gw upload_storage，与 gen_image.py 同通道）。"""
-    from agent_gw import AgentGwClient  # type: ignore
-    client = AgentGwClient()
-    resp = client.upload_storage(file=local_path)
-    url = getattr(resp, "signed_url", None)
-    if url is None and isinstance(resp, dict):
-        url = resp.get("signed_url") or resp.get("url")
-    if not url:
-        raise RuntimeError(f"参考图上传失败: {resp}")
-    return url
+    try:
+        from agent_gw import AgentGwClient  # type: ignore
+        client = AgentGwClient()
+        resp = client.upload_storage(file=local_path)
+        url = getattr(resp, "signed_url", None)
+        if url is None and isinstance(resp, dict):
+            url = resp.get("signed_url") or resp.get("url")
+        if url:
+            return url
+    except ImportError:
+        pass
+    mime = mimetypes.guess_type(local_path)[0] or "image/png"
+    with open(local_path, "rb") as handle:
+        encoded = base64.b64encode(handle.read()).decode("ascii")
+    return f"data:{mime};base64,{encoded}"
 
 
 def api(endpoint, key, method="GET", payload=None):
@@ -92,8 +106,12 @@ def api(endpoint, key, method="GET", payload=None):
         headers={"Content-Type": "application/json",
                  "Authorization": f"Bearer {key}"},
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.loads(r.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Seedance HTTP {exc.code}: {body[:1000]}") from exc
 
 
 # ---------- provider 适配器 ----------
@@ -102,11 +120,17 @@ class SeedanceAdapter:
     """火山方舟 Seedance：POST 建任务 → GET 轮询 → content.video_url。"""
 
     def __init__(self, cfg):
-        self.model = cfg.get("model", "doubao-seedance-2-0-fast-260128")
+        self.model_family = cfg.get("model_family", "")
+        if self.model_family != "seedance-2.5":
+            raise ValueError(
+                "video.seedance.model_family 必须为 seedance-2.5；禁止切换或本地降级")
+        self.model = cfg.get("model", "")
+        if not self.model:
+            raise ValueError("video.seedance.model 未配置 Seedance 2.5 endpoint")
         self.endpoint = cfg.get(
             "endpoint",
             "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks")
-        self.key_env = cfg.get("api_key_env", "ARK_API_KEY")
+        self.key_env = cfg.get("api_key_env", "ARK_VIDEO_API_KEY")
 
     def build_payload(self, prompt, ref_url, args):
         return {
@@ -147,12 +171,93 @@ class SeedanceAdapter:
 PROVIDERS = {"seedance": SeedanceAdapter}
 
 
+def project_from_output(output_path: str) -> str:
+    """Require projects/<id>/game/video/<file>.mp4 and return projects/<id>."""
+    output = os.path.abspath(output_path)
+    video_dir = os.path.dirname(output)
+    game_dir = os.path.dirname(video_dir)
+    if os.path.basename(video_dir) != "video" or os.path.basename(game_dir) != "game":
+        raise ValueError("--out 必须位于 projects/<id>/game/video/，以便写入强制来源回执")
+    return os.path.dirname(game_dir)
+
+
+def project_relative(project_dir: str, path: str, label: str) -> str:
+    absolute = os.path.abspath(path)
+    relative = os.path.relpath(absolute, project_dir)
+    if relative == ".." or relative.startswith(".." + os.sep):
+        raise ValueError(f"{label} 必须位于项目目录内: {path}")
+    return relative.replace(os.sep, "/")
+
+
+def write_json_atomic(path: str, payload: dict) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+    os.replace(tmp, path)
+
+
+def record_seedance_success(project_dir: str, args, adapter, task_id: str, duration: float) -> None:
+    output_rel = project_relative(project_dir, args.out, "输出视频")
+    prompt_rel = project_relative(project_dir, args.prompt_file, "分镜 prompt")
+    ref_rel = project_relative(project_dir, args.ref, "参考图")
+    stem = os.path.splitext(os.path.basename(args.out))[0]
+    receipt_rel = f"video_receipts/{stem}.seedance.json"
+    completed_at = datetime.now(timezone.utc).isoformat()
+    receipt = {
+        "schema_version": 1,
+        "type": "seedance_video_receipt",
+        "provider": "seedance",
+        "model_family": adapter.model_family,
+        "model": adapter.model,
+        "task_id": task_id,
+        "task_status": "succeeded",
+        "generator": "scripts/gen_video.py",
+        "prompt_file": prompt_rel,
+        "reference_image": ref_rel,
+        "output": output_rel,
+        "ratio": args.ratio,
+        "resolution": args.resolution,
+        "duration_seconds": round(duration, 3),
+        "generate_audio": not args.no_audio,
+        "completed_at": completed_at,
+    }
+    write_json_atomic(os.path.join(project_dir, receipt_rel), receipt)
+
+    manifest_path = os.path.join(project_dir, "manifest.json")
+    manifest = {"assets": {}, "pending": []}
+    if os.path.exists(manifest_path):
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    assets = manifest.setdefault("assets", {})
+    assets[output_rel.removeprefix("game/")] = {
+        "type": "ending_video",
+        "status": "ok",
+        "provider": "seedance",
+        "model_family": adapter.model_family,
+        "model": adapter.model,
+        "task_id": task_id,
+        "task_status": "succeeded",
+        "generator": "scripts/gen_video.py",
+        "prompt_file": prompt_rel,
+        "reference_image": ref_rel,
+        "output": output_rel,
+        "receipt": receipt_rel,
+        "ratio": args.ratio,
+        "resolution": args.resolution,
+        "duration_seconds": round(duration, 3),
+        "generate_audio": not args.no_audio,
+        "completed_at": completed_at,
+    }
+    write_json_atomic(manifest_path, manifest)
+
+
 # ---------- 主流程 ----------
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--prompt-file")
-    ap.add_argument("--prompt")
+    ap.add_argument("--prompt-file", required=True)
     ap.add_argument("--ref", required=True, help="角色主题图（本地路径，上传转 URL）")
     ap.add_argument("--out", required=True)
     ap.add_argument("--ratio", default="9:16")
@@ -162,26 +267,39 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=600, help="轮询超时秒数")
     args = ap.parse_args()
 
-    prompt = args.prompt
-    if args.prompt_file:
-        prompt = open(args.prompt_file, encoding="utf-8").read().strip()
+    try:
+        project_dir = project_from_output(args.out)
+        project_relative(project_dir, args.prompt_file, "分镜 prompt")
+        project_relative(project_dir, args.ref, "参考图")
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 1
+
+    prompt = open(args.prompt_file, encoding="utf-8").read().strip()
     if not prompt:
-        print("ERROR: 需要 --prompt-file 或 --prompt")
+        print("ERROR: --prompt-file 为空")
         return 1
 
     cfg = load_video_config()
     provider = cfg.get("provider", "seedance")
+    if provider != "seedance":
+        print("ERROR: visual-novel-builder 强制 video.provider=seedance，禁止切换或本地降级")
+        return 1
     if provider not in PROVIDERS:
         print(f"ERROR: 未实现的 video provider: {provider}（已注册: {list(PROVIDERS)}）")
         return 1
-    adapter = PROVIDERS[provider](cfg.get(provider, {}))
+    try:
+        adapter = PROVIDERS[provider](cfg.get(provider, {}))
+    except ValueError as exc:
+        print(f"ERROR: {exc}")
+        return 1
 
     key = os.environ.get(adapter.key_env, "")
     if not key:
         print(f"ERROR: 环境变量 {adapter.key_env} 未设置（API key 禁止写进仓库，用 env 注入）")
         return 1
 
-    print(f"provider={provider} model={adapter.model}")
+    print(f"provider={provider} model_family={adapter.model_family} model={adapter.model}")
     print("上传参考图…")
     ref_url = upload_ref(args.ref)
     print("创建任务…")
@@ -222,7 +340,9 @@ def main() -> int:
     if probe.returncode != 0 or not dur:
         print("ERROR: 下载文件不是有效视频")
         return 1
-    print(f"OK saved: {args.out}（时长 {float(dur):.1f}s）")
+    duration = float(dur)
+    record_seedance_success(project_dir, args, adapter, task_id, duration)
+    print(f"OK saved: {args.out}（时长 {duration:.1f}s，Seedance 回执已落档）")
     return 0
 
 

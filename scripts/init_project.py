@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 
 PROJECT_DIRS = [
     "character",
+    "storyboards",
+    "video_receipts",
     "game/scene",
     "game/background",
     "game/figure",
@@ -28,9 +30,28 @@ DEFAULT_STATE = {
     "stage": "INTAKE",
     "gdd_confirmed": False,
     "script_valid": False,
+    "visual_plan_valid": False,
     "assets_confirmed": False,
+    "ending_videos_verified": False,
+    "video_provider_required": "seedance",
+    "video_model_family_required": "seedance-2.5",
     "qa_passed": False,
     "history": [],
+}
+
+DEFAULT_VISUAL_PLAN = {
+    "version": 3,
+    "visual_policy": {
+        "min_pose_hold_lines": 3,
+        "max_pose_changes_per_100_lines": 12,
+        "max_visual_changes_per_100_lines": 24,
+        "max_cg_per_scene": 2,
+        "max_action_beats_per_scene": 2,
+        "max_background_beats_per_scene": 4,
+        "max_text_lead_transition_ms": 220,
+    },
+    "figure_catalog": {},
+    "beats": [],
 }
 
 DEFAULT_CONFIG = """Game_name:{title};
@@ -78,8 +99,14 @@ def main() -> int:
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump({"assets": {}, "pending": []}, f, ensure_ascii=False, indent=2)
 
+    visual_plan_path = os.path.join(root, "visual_plan.json")
+    if not os.path.exists(visual_plan_path):
+        with open(visual_plan_path, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_VISUAL_PLAN, f, ensure_ascii=False, indent=2)
+
     print(f"OK project ready: {root}")
     print(f"  state: {state_path}")
+    print(f"  visual plan: {visual_plan_path}")
     return 0
 
 

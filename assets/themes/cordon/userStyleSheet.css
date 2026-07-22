@@ -1,0 +1,75 @@
+/* cordon 近未来特遣署 · 全局微调（动态封面版） */
+
+/* 隐藏底部控制条（视觉小说不需要引擎功能按钮，分支回溯由剧本承担） */
+[class*="_singleButton_"] {
+  display: none !important;
+}
+
+/* ===== React 标题封面层：与落地页动态封面同参数衔接 =====
+   cordon 配方：慢速推拉 + 冷雨斜切 + 低强度扫描光。
+   注意：css-kb8n67 是引擎 dist 的 emotion 类名，若重新构建引擎需同步更新。 */
+.css-kb8n67 {
+  animation: titleKenBurns __KB_DURATION__ ease-in-out infinite alternate;
+}
+@keyframes titleKenBurns {
+  0%   { background-size: auto __KB_ZOOM_FROM__; background-position: 50% 20%; }
+  100% { background-size: auto __KB_ZOOM_TO__; background-position: 50% 46%; }
+}
+/* 扫光层：参数由 apply_theme 按 theme.json effects.sheen 注入（noir 默认关闭） */
+.css-kb8n67::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: __SHEEN_BACKGROUND__;
+  background-size: 260% 260%;
+  background-repeat: no-repeat;
+  animation: __SHEEN_ANIMATION__;
+}
+/* 粒子层结构（tile 由项目主题素材提供）；动效由项目 effects.css 注入下方占位符 */
+.css-kb8n67::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("background/title_particles.png");
+  background-repeat: repeat;
+}
+/*__FX_CSS__*/
+
+/* 对话框底板不透明度拉满（压过用户档位设置，保证皮肤观感） */
+div:has(+ #textBoxMain) {
+  opacity: 1 !important;
+}
+
+body {
+  background-color: #07111F;
+}
+
+/* 无名牌旁白：正文弱化 +「旁白」标签。
+   判定用 DOM 结构而非类名：旁白行 #textBoxMain 恰好 2 个直接子节点
+   （miniAvatar+文本容器），对话行 4 个（多 2 个名牌 div）——名牌与文字
+   span 都是 emotion 随机类名，[class*=] 匹配不可靠（v8.1 教训）。
+   弱化作用在文本容器上（子元素打字机 opacity 动画不受影响，容器
+   不透明度与子元素相乘）；标签实底与面板同色，骑缝坐在框边上缘，
+   与角色实心名牌同槽位、略小一号，层级一眼可辨。 */
+#textBoxMain:not(:has(> :nth-child(3))) > :nth-child(2) {
+  opacity: 0.82;
+}
+#textBoxMain:not(:has(> :nth-child(3)))::before {
+  content: "旁白";
+  position: absolute;
+  left: 76px;
+  top: -34px;
+  height: 68px;
+  line-height: 64px;
+  padding: 0 36px;
+  font-size: 40px;
+  letter-spacing: 0.12em;
+  color: #AEB7FF;
+  border: 1px solid rgba(140, 124, 255, .72);
+  border-radius: 6px 10px 6px 3px;
+  background: #07101E;
+  pointer-events: none;
+  z-index: 3;
+}

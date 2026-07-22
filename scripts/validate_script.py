@@ -145,31 +145,8 @@ def main() -> int:
             "scene_refs": scene_refs, "setvars": setvars, "ends": ends,
             "entry_label": first_label_seen,
         }
-        # 选项分支演出检查：choose 的每个目标 label 块内应有立绘变化（warning 级，
-        # 角色不在场的独处场景属合理例外，需人工确认）
-        label_pos = {}
-        for i, raw in enumerate(lines):
-            p = parse_line(raw)
-            if p and p[0] == "label":
-                label_pos[p[1]] = i
-        for t in chooses:
-            if t.endswith(".txt") or t not in label_pos:
-                continue
-            # 回溯分支（*_retry）纯做 setVar 回滚 + jumpLabel 回跳，
-            # 天然无立绘变化，属剧本级模式而非演出缺失，免报
-            if t.endswith("_retry"):
-                continue
-            start = label_pos[t] + 1
-            block = lines[start:start + 12]  # 分支前 12 行内找立绘变化
-            has_fig = any(
-                ln.strip().startswith("changeFigure:") and not ln.strip().startswith("changeFigure:none")
-                for ln in block
-            )
-            if not has_fig:
-                warnings.append(
-                    f"{fname}: 选项分支 '{t}' 内未见立绘变化"
-                    "（每个选项都该给角色对应的表情/素材反应；角色不在场可忽略）"
-                )
+        # 分支不再强制切立绘。选择的反馈首先由台词/数值承担；只有持续的身体语言
+        # 变化或具体动作才进入 visual_plan。逐分支硬切图会制造高频闪切和无意义差分。
         all_setvars |= setvars
         if clear_before_first_bg is False:
             errors.append(

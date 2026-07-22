@@ -1,0 +1,33 @@
+{
+  "name": "cordon",
+  "mood": "近未来特遣署/冷雨/克制守护",
+  "primary": "#8C7CFF",
+  "secondary": "#4DA8E8",
+  "text": "#EAF2FF",
+  "particle": {
+    "type": "rain",
+    "color": "#8CB9E8",
+    "count": 72,
+    "duration": "5.8s"
+  },
+  "cover": {
+    "stroke": "#8C7CFF",
+    "prompt_mood": "near-future special operations command, cold diagonal rain, violet-blue tactical HUD, restrained intimacy"
+  },
+  "hud": "深烟蓝战术通讯框 + 紫蓝矩形名签 + 任务卡片选择支 + 小圆角切角",
+  "effects": {
+    "sheen": {
+      "enabled": true,
+      "tint": "96,142,220",
+      "peak": 0.12,
+      "angle": "118deg",
+      "duration": "12s"
+    },
+    "kenburns": {
+      "duration": "18s",
+      "zoomFrom": "104%",
+      "zoomTo": "112%"
+    },
+    "fallback": "linear-gradient(155deg, #07111F 0%, #14213A 58%, #231D42 100%)"
+  }
+}

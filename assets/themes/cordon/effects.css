@@ -1,0 +1,11 @@
+/* noir 皮肤默认动效（骨架兜底：项目根 effects.css 存在时会被覆盖）
+   推导：悬疑/冷硬派 → 冷雨直坠 = 重力主导、无摇曳、周期短（雨幕密而急）
+   无缝：纵向 2560px 整数倍；斜度由 tile 雨丝形状承担，位移保持垂直 */
+@keyframes noirRainFall {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 2560px; }
+}
+.html-body__title-enter::before,
+.css-kb8n67::before {
+  animation: noirRainFall 3.2s linear infinite;
+}
