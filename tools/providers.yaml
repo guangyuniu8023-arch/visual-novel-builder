@@ -3,9 +3,10 @@ provider: agent_gw
 video:
   provider: seedance
   seedance:
-    model: doubao-seedance-2-0-fast-260128
+    model_family: seedance-2.5
+    model: ep-20260708102140-mxjvc
     endpoint: https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks
-    api_key_env: ARK_API_KEY
+    api_key_env: ARK_VIDEO_API_KEY
   # openai_compat:          # 预留：任意 OpenAI 兼容视频 API
   #   model: xxx
   #   endpoint: https://...

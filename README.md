@@ -21,8 +21,8 @@
 具体能力：
 
 - **需求澄清**：从零需求或一句话想法出发，通过对话补全缺口，产出 GDD（游戏设计文档），用户确认后才动工
-- **剧本生成**：WebGAL 脚本，分支选择驱动隐藏数值，导向多结局；自动校验语法
-- **视觉资产**：立绘（参考图保持角色一致性）、背景、CG、**封面直出**（标题字体设计由生图模型随主题生成，非后期叠字）
+- **剧本生成**：WebGAL 脚本，分支选择驱动隐藏数值，导向多结局；在写台词前先建立 `visual_plan.json`，约束人物在/离场、动作和环境状态
+- **视觉资产**：对话立绘同时设计表情与身体语言，但按最短持有行数和切图预算克制使用；非开场换图由可见文字先解释，再短转场到承接文本。剧情动作单独锁定 beat，另按视觉计划生成必要的背景状态、CG、**封面直出**
 - **开场动效从零写**：引擎零预置粒子代码，每个项目的粒子意象、运动、配色都由 agent 按主题现场推导写成 `effects.css`（雨是沉降、灰烬是上浮，不是同一批扫光换色）
 - **一键装配**：内置 WebGAL 竖屏引擎 + 主题系统（HUD/对话框/选择支随题材适配）
 - **自动验收**：无头浏览器跑完全部结局路线，逐张截图检查，全绿才交付
@@ -94,7 +94,8 @@ git clone https://github.com/guangyuniu8023-arch/visual-novel-builder.git
 SKILL.md            入口：状态机、硬规则、交付定义
 references/         各阶段执行文档（intake / scriptwriter / art-director / build / qa）
 scripts/            工具链：init_project / gen_image / bake_title / trim_asset /
-                    validate_script / check_assets / assemble_build / e2e_test
+                    validate_script / validate_visual_plan / check_assets /
+                    assemble_build / e2e_test
 assets/engine/      内置 WebGAL 竖屏引擎（13M，开箱即用，无需构建）
 assets/themes/      主题系统（HUD/对话框/选择支样式骨架，配色随 GDD 配方注入）
 tools/providers.yaml  生图 provider 配置（默认 agent_gw，预留插拔）

@@ -150,6 +150,21 @@ async def main_async(args) -> int:
             if await guard_menu(page):
                 continue
 
+            # 结局 playVideo -skipOff 期间不能继续点屏幕：部分 WebGAL 版本会把
+            # 点击解释为重新聚焦/重播，自动化因此永久停在视频首镜。可见视频
+            # 播放时只等待自然结束；隐藏的预载 video 不应阻塞剧情推进。
+            video_state = await page.evaluate("""() => {
+                const v = document.querySelector('video');
+                if (!v) return null;
+                const s = getComputedStyle(v), r = v.getBoundingClientRect();
+                const visible = s.display !== 'none' && s.visibility !== 'hidden' &&
+                    Number(s.opacity || 1) > 0 && r.width > 40 && r.height > 40;
+                return visible ? {ended: v.ended, paused: v.paused, time: v.currentTime} : null;
+            }""")
+            if video_state and not video_state["ended"]:
+                await page.wait_for_timeout(1000)
+                continue
+
             choices = []
             if True:  # 每步必探：选项停在屏幕中央，推进点击会误吞选择支
                 cands = await probe_choices(page)
